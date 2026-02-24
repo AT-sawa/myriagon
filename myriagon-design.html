@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MYRIAGON</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=DM+Mono:wght@400;500&family=Noto+Sans+JP:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg0: #070809;
+  --bg1: #0b0c0e;
+  --bg2: #101214;
+  --bg2h: #151819;
+  --border: rgba(255,255,255,0.07);
+  --border-hi: rgba(255,255,255,0.14);
+  --text0: #e6e8ec;
+  --text1: #6a7585;
+  --text2: #3c4556;
+  --sw: 260px;
+  --nh: 54px;
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 14px;
+
+  /* ── Rainbow gradient – the MYRIAGON identity ── */
+  --rainbow: linear-gradient(
+    90deg,
+    #ff6b6b 0%,
+    #ff9f43 16%,
+    #ffd32a 32%,
+    #26de81 48%,
+    #45aaf2 64%,
+    #a55eea 80%,
+    #ff6b6b 100%
+  );
+  /* Softer version for borders/glows */
+  --rainbow-soft: linear-gradient(
+    90deg,
+    rgba(255,107,107,0.7) 0%,
+    rgba(255,159,67,0.7) 16%,
+    rgba(255,211,42,0.7) 32%,
+    rgba(38,222,129,0.7) 48%,
+    rgba(69,170,242,0.7) 64%,
+    rgba(165,94,234,0.7) 80%,
+    rgba(255,107,107,0.7) 100%
+  );
+  --rainbow-glow: rgba(100, 120, 220, 0.08);
+
+  --s-ok: #4ade80;
+  --s-ok-bg: rgba(74,222,128,0.08);
+  --s-warn: #fb923c;
+  --s-warn-bg: rgba(251,146,60,0.08);
+  --s-err: #f87171;
+  --s-err-bg: rgba(248,113,113,0.08);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'DM Sans','Noto Sans JP',sans-serif;background:var(--bg0);color:var(--text0);min-height:100vh;overflow-x:hidden;}
+body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.72' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23g)' opacity='0.025'/%3E%3C/svg%3E");opacity:1;}
+
+/* ── Rainbow utility classes ── */
+.rainbow-text {
+  background: var(--rainbow);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: rainbowShift 6s linear infinite;
+}
+.rainbow-border {
+  position: relative;
+}
+.rainbow-border::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: var(--rainbow);
+  background-size: 200% auto;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: rainbowShift 6s linear infinite;
+  pointer-events: none;
+}
+@keyframes rainbowShift {
+  0%   { background-position: 0% center; }
+  100% { background-position: 200% center; }
+}
+
+/* ── NAV ── */
+nav {
+  position: fixed; inset: 0 0 auto; height: var(--nh); z-index: 500;
+  background: rgba(7,8,9,0.92); backdrop-filter: blur(28px) saturate(160%);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; padding: 0 24px;
+}
+.nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; margin-right: auto; }
+.logo-text {
+  font-size: 13.5px; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase;
+}
+.nav-links { display: flex; gap: 1px; }
+.nav-link {
+  font-size: 13px; color: var(--text1); padding: 5px 13px;
+  border-radius: var(--r-sm); transition: color .15s, background .15s; cursor: pointer; letter-spacing: .01em;
+}
+.nav-link:hover { color: var(--text0); background: rgba(255,255,255,0.05); }
+.nav-link.active { color: var(--text0); }
+.nav-avatar {
+  width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--border);
+  background: var(--bg2); cursor: pointer; margin-left: 14px;
+  display: flex; align-items: center; justify-content: center; transition: border-color .2s; flex-shrink: 0;
+}
+.nav-avatar:hover { border-color: var(--border-hi); }
+.nav-avatar svg { width: 14px; height: 14px; color: var(--text1); }
+
+/* ── LAYOUT ── */
+.app { display: flex; padding-top: var(--nh); min-height: 100vh; }
+
+/* ── SIDEBAR ── */
+aside {
+  width: var(--sw); min-height: calc(100vh - var(--nh)); background: var(--bg1);
+  border-right: 1px solid var(--border); position: fixed; top: var(--nh); left: 0;
+  display: flex; flex-direction: column; padding: 14px 10px; overflow-y: auto;
+}
+.sb-tabs {
+  display: flex; background: var(--bg0); border: 1px solid var(--border);
+  border-radius: var(--r-md); padding: 3px; gap: 2px; margin-bottom: 14px;
+}
+.sb-tab {
+  flex: 1; text-align: center; padding: 6px 0; font-size: 11.5px; font-weight: 500;
+  letter-spacing: .05em; color: var(--text2); border-radius: 8px; cursor: pointer;
+  transition: all .2s; user-select: none;
+}
+.sb-tab.active { background: var(--bg2); color: var(--text0); box-shadow: 0 1px 6px rgba(0,0,0,.6); }
+
+.sb-label {
+  font-size: 9.5px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--text2); padding: 10px 8px 5px;
+}
+
+/* flow card */
+.fc {
+  border-radius: var(--r-md); padding: 10px 10px 10px 12px;
+  border: 1px solid transparent; cursor: pointer; transition: all .2s; position: relative;
+}
+.fc:hover { background: var(--bg2); border-color: var(--border); }
+.fc.active { background: var(--bg2); border-color: transparent; }
+
+/* Rainbow left bar on active flow card */
+.fc.active::before {
+  content: '';
+  position: absolute; left: 0; top: 16%; bottom: 16%;
+  width: 2.5px; border-radius: 2px;
+  background: var(--rainbow);
+  background-size: 200% auto;
+  animation: rainbowShift 4s linear infinite;
+}
+/* Subtle rainbow border on active */
+.fc.active::after {
+  content: '';
+  position: absolute; inset: 0;
+  border-radius: var(--r-md);
+  border: 1px solid transparent;
+  background: linear-gradient(var(--bg2), var(--bg2)) padding-box,
+              var(--rainbow) border-box;
+  background-size: auto, 200% auto;
+  animation: rainbowShift 6s linear infinite;
+  pointer-events: none;
+}
+
+.fc-icons { display: flex; gap: 5px; margin-bottom: 8px; align-items: center; }
+.svc-ico {
+  width: 26px; height: 26px; border-radius: 6px; background: var(--bg0);
+  border: 1px solid var(--border); display: flex; align-items: center; justify-content: center;
+  overflow: hidden; flex-shrink: 0; transition: border-color .2s;
+}
+.svc-ico img { width: 16px; height: 16px; object-fit: contain; }
+.fc:hover .svc-ico, .fc.active .svc-ico { border-color: rgba(255,255,255,0.12); }
+.ico-add {
+  width: 26px; height: 26px; border-radius: 6px; border: 1px dashed var(--text2);
+  display: flex; align-items: center; justify-content: center; color: var(--text2);
+  font-size: 15px; cursor: pointer; transition: all .2s; line-height: 1; flex-shrink: 0;
+}
+.ico-add:hover { border-color: var(--text1); color: var(--text1); }
+.fc-title { font-size: 12px; font-weight: 500; color: var(--text0); line-height: 1.4; margin-bottom: 2px; }
+.fc.inactive .fc-title { color: var(--text1); }
+.fc-desc { font-size: 11px; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* RAG sidebar */
+.rc {
+  border-radius: var(--r-md); padding: 9px 10px; border: 1px solid transparent;
+  cursor: pointer; transition: all .2s; display: flex; align-items: center; gap: 9px;
+}
+.rc:hover { background: var(--bg2); border-color: var(--border); }
+.rc.active { background: var(--bg2); }
+.rc-icon {
+  width: 30px; height: 30px; border-radius: 7px; background: var(--bg0);
+  border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.rc-icon svg { width: 14px; height: 14px; }
+.rc-body { flex: 1; min-width: 0; }
+.rc-title { font-size: 12px; font-weight: 500; color: var(--text0); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 1px; }
+.rc-meta { font-size: 10.5px; color: var(--text2); }
+.rc-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.rc-dot.ready { background: var(--s-ok); }
+.rc-dot.idx { background: var(--s-warn); animation: blink 1.5s ease-in-out infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+.rc-section {
+  font-size: 9px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--text2); padding: 10px 10px 5px; display: flex; align-items: center; gap: 8px;
+}
+.rc-section::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+.sb-bottom { margin-top: auto; padding: 10px 8px 4px; border-top: 1px solid var(--border); }
+.settings-link {
+  display: flex; align-items: center; gap: 8px; padding: 8px;
+  border-radius: var(--r-sm); color: var(--text2); font-size: 12px; cursor: pointer; transition: all .15s;
+}
+.settings-link:hover { color: var(--text1); background: var(--bg2); }
+.settings-link svg { width: 13px; height: 13px; flex-shrink: 0; }
+
+/* ── MAIN ── */
+main { margin-left: var(--sw); flex: 1; padding: 32px 40px; min-height: calc(100vh - var(--nh)); }
+
+/* ask box */
+.ask-wrap { position: relative; margin-bottom: 40px; }
+.ask-box {
+  width: 100%; background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--r-lg); padding: 16px 52px 16px 18px;
+  font-size: 14px; color: var(--text0); outline: none; resize: none; min-height: 80px;
+  font-family: inherit; line-height: 1.65; transition: border-color .2s, box-shadow .2s;
+}
+.ask-box::placeholder { color: var(--text2); }
+.ask-box:focus {
+  border-color: transparent;
+  box-shadow: 0 0 0 1px transparent, 0 4px 28px rgba(0,0,0,.5);
+  background-image: linear-gradient(var(--bg2), var(--bg2));
+  background-origin: border-box;
+  /* Rainbow border on focus */
+  outline: none;
+}
+/* Rainbow border wrapper for ask box */
+.ask-wrap .ask-rainbow-ring {
+  position: absolute; inset: 0; border-radius: var(--r-lg);
+  padding: 1px;
+  background: var(--border);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+  pointer-events: none; transition: background .2s;
+  z-index: 1;
+}
+.ask-box:focus ~ .ask-rainbow-ring {
+  background: var(--rainbow);
+  background-size: 200% auto;
+  animation: rainbowShift 4s linear infinite;
+}
+
+.ask-send {
+  position: absolute; right: 14px; bottom: 14px;
+  width: 32px; height: 32px; border-radius: 7px;
+  background: var(--rainbow); background-size: 200% auto;
+  animation: rainbowShift 6s linear infinite;
+  border: none; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: transform .2s, box-shadow .2s; z-index: 2;
+}
+.ask-send:hover { transform: translateY(-1px); box-shadow: 0 4px 20px rgba(120,80,255,.25); }
+.ask-send svg { color: #fff; }
+
+/* section header */
+.sh { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+.sh-title { font-size: 10.5px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--text2); white-space: nowrap; }
+.sh-line { flex: 1; height: 1px; background: var(--border); }
+.sh-link { font-size: 11.5px; color: var(--text1); text-decoration: none; letter-spacing: .02em; white-space: nowrap; transition: color .15s; cursor: pointer; }
+.sh-link:hover { color: var(--text0); }
+.sh h2 { font-size: 20px; font-weight: 600; letter-spacing: -.02em; color: var(--text0); }
+
+/* flow grid cards */
+.flow-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(268px, 1fr)); gap: 12px; margin-bottom: 44px; }
+.fg-card {
+  background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r-lg);
+  padding: 16px; cursor: pointer; transition: all .25s; position: relative; overflow: hidden;
+}
+.fg-card:hover {
+  background: var(--bg2h); transform: translateY(-2px);
+  box-shadow: 0 8px 32px rgba(0,0,0,.5);
+  border-color: transparent;
+}
+/* Rainbow top stripe on hover */
+.fg-card::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 1.5px;
+  background: var(--rainbow); background-size: 200% auto;
+  animation: rainbowShift 4s linear infinite;
+  opacity: 0; transition: opacity .3s;
+}
+.fg-card:hover::before { opacity: 1; }
+/* Rainbow border on hover */
+.fg-card:hover {
+  box-shadow: 0 8px 32px rgba(0,0,0,.5), inset 0 0 0 1px rgba(255,255,255,0.06);
+}
+
+.fg-icons { display: flex; gap: 5px; margin-bottom: 12px; align-items: center; }
+.fg-icon {
+  width: 30px; height: 30px; border-radius: 7px; background: var(--bg0);
+  border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; overflow: hidden;
+}
+.fg-icon img { width: 18px; height: 18px; object-fit: contain; }
+.fg-title { font-size: 13px; font-weight: 500; color: var(--text0); line-height: 1.45; margin-bottom: 5px; }
+.fg-desc { font-size: 11.5px; color: var(--text1); line-height: 1.55; }
+.fg-badge {
+  display: inline-flex; align-items: center; margin-top: 11px;
+  font-size: 10px; font-weight: 600; letter-spacing: .05em;
+  padding: 2px 8px; border-radius: 20px;
+  background: var(--rainbow); background-size: 300% auto;
+  animation: rainbowShift 6s linear infinite;
+  color: transparent;
+  -webkit-background-clip: text; background-clip: text;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+/* pages */
+.page { display: none; }
+.page.visible { display: block; animation: fadeUp .22s ease-out; }
+@keyframes fadeUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+
+/* template detail */
+.back-link { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text1); text-decoration: none; margin-bottom: 28px; transition: color .15s; cursor: pointer; }
+.back-link:hover { color: var(--text0); }
+.back-link svg { width: 13px; height: 13px; }
+.tpl-layout { display: grid; grid-template-columns: 320px 1fr; gap: 44px; align-items: start; }
+.tpl-tags { display: flex; gap: 7px; flex-wrap: wrap; margin-bottom: 16px; }
+.tag { font-size: 10.5px; font-weight: 500; letter-spacing: .04em; color: var(--text2); background: var(--bg2); border: 1px solid var(--border); padding: 3px 9px; border-radius: 20px; }
+.tpl-title { font-size: 22px; font-weight: 600; letter-spacing: -.02em; line-height: 1.3; margin-bottom: 18px; }
+.tpl-btns { display: flex; gap: 9px; margin-bottom: 26px; }
+
+/* Primary button with rainbow */
+.btn-p {
+  position: relative; overflow: hidden;
+  background: var(--rainbow); background-size: 200% auto;
+  animation: rainbowShift 6s linear infinite;
+  color: #fff; border: none; padding: 9px 22px;
+  border-radius: var(--r-sm); font-size: 13px; font-weight: 600;
+  cursor: pointer; font-family: inherit; transition: transform .2s, box-shadow .2s;
+  text-shadow: 0 1px 3px rgba(0,0,0,.3);
+}
+.btn-p:hover { transform: translateY(-1px); box-shadow: 0 4px 20px rgba(100,80,200,.3); }
+.btn-s {
+  background: transparent; color: var(--text0); border: 1px solid var(--border);
+  padding: 9px 22px; border-radius: var(--r-sm); font-size: 13px; font-weight: 500;
+  cursor: pointer; transition: all .2s; font-family: inherit;
+}
+.btn-s:hover { border-color: var(--border-hi); background: rgba(255,255,255,.04); }
+
+.sec-head { font-size: 10px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--text2); margin-bottom: 9px; }
+.tpl-desc { font-size: 13px; line-height: 1.75; color: var(--text1); margin-bottom: 22px; }
+.nodes-list { display: flex; flex-direction: column; gap: 7px; margin-bottom: 22px; }
+.ni { display: flex; align-items: center; gap: 9px; padding: 9px 11px; background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r-sm); }
+.ni-ico { width: 24px; height: 24px; border-radius: 5px; background: var(--bg0); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0; }
+.ni-ico img { width: 13px; height: 13px; object-fit: contain; }
+.ni-ico svg { width: 12px; height: 12px; }
+.ni-name { font-size: 12px; font-weight: 500; color: var(--text0); }
+.ni-type { font-size: 10.5px; color: var(--text2); margin-left: auto; font-family: 'DM Mono', monospace; }
+
+/* workflow preview */
+.wf-area {
+  background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r-lg);
+  overflow: hidden; aspect-ratio: 16/10; display: flex; align-items: center; justify-content: center; position: relative;
+}
+.wf-grid {
+  position: absolute; inset: 0;
+  background-image: linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px);
+  background-size: 26px 26px;
+}
+.wf { position: relative; z-index: 1; display: flex; align-items: center; }
+.wf-node { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.wf-box { width: 58px; height: 58px; border-radius: 12px; background: var(--bg0); border: 1.5px solid var(--border); display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.wf-box img { width: 28px; height: 28px; object-fit: contain; }
+.wf-box svg { width: 24px; height: 24px; }
+.wf-box.on { border-color: transparent; position: relative; }
+/* Rainbow border on active wf node */
+.wf-box.on::after {
+  content: '';
+  position: absolute; inset: -1.5px;
+  border-radius: 12px;
+  background: var(--rainbow);
+  background-size: 200% auto;
+  animation: rainbowShift 4s linear infinite;
+  z-index: -1;
+}
+.wf-box.trigger { border-color: rgba(255,255,255,.2); }
+.wf-label { font-size: 10px; color: var(--text2); text-align: center; max-width: 70px; line-height: 1.3; }
+.wf-conn { width: 36px; height: 1.5px; background: var(--border); position: relative; margin-bottom: 22px; flex-shrink: 0; }
+.wf-conn::after { content: ''; position: absolute; right: -3px; top: -3px; width: 7px; height: 7px; border-radius: 50%; background: var(--border); }
+.wf-conn.on { background: var(--rainbow); background-size: 200% auto; animation: rainbowShift 3s linear infinite; }
+.wf-conn.on::after { background: #a55eea; }
+
+/* connections */
+.conn-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(172px, 1fr)); gap: 10px; margin-bottom: 28px; }
+.cc { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r-lg); padding: 16px; cursor: pointer; transition: all .2s; text-align: center; }
+.cc:hover { border-color: var(--border-hi); background: var(--bg2h); transform: translateY(-2px); }
+.cc.connected { border-color: transparent; position: relative; }
+.cc.connected::before {
+  content: '';
+  position: absolute; inset: 0;
+  border-radius: var(--r-lg);
+  border: 1px solid transparent;
+  background: linear-gradient(var(--bg2), var(--bg2)) padding-box, var(--rainbow) border-box;
+  background-size: auto, 200% auto;
+  animation: rainbowShift 8s linear infinite;
+  pointer-events: none;
+}
+.cc-ico { width: 40px; height: 40px; border-radius: 10px; background: var(--bg0); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; margin: 0 auto 10px; overflow: hidden; }
+.cc-ico img { width: 24px; height: 24px; object-fit: contain; }
+.cc-name { font-size: 12.5px; font-weight: 500; color: var(--text0); margin-bottom: 4px; }
+.cc-status { font-size: 11px; }
+.cc-status.ok { color: var(--s-ok); }
+.cc-status.none { color: var(--text2); }
+
+/* upload zone */
+.upload-zone { border: 1.5px dashed var(--border); border-radius: var(--r-lg); padding: 28px; text-align: center; cursor: pointer; transition: all .2s; margin-bottom: 24px; }
+.upload-zone:hover { border-color: rgba(255,255,255,.2); background: rgba(255,255,255,.02); }
+.upload-zone svg { width: 26px; height: 26px; color: var(--text2); margin-bottom: 8px; }
+.upload-zone p { font-size: 13px; color: var(--text1); }
+.upload-zone span { font-weight: 500; background: var(--rainbow); background-size: 200% auto; -webkit-background-clip: text; background-clip: text; color: transparent; animation: rainbowShift 6s linear infinite; }
+
+/* doc table */
+.doc-table { width: 100%; border-collapse: collapse; margin-bottom: 36px; }
+.doc-table th { font-size: 10px; font-weight: 600; letter-spacing: .09em; text-transform: uppercase; color: var(--text2); padding: 8px 14px; text-align: left; border-bottom: 1px solid var(--border); }
+.doc-table td { padding: 11px 14px; font-size: 12.5px; color: var(--text1); border-bottom: 1px solid rgba(255,255,255,.025); vertical-align: middle; }
+.doc-table tr:hover td { background: var(--bg2); }
+.doc-name { color: var(--text0) !important; font-weight: 500; display: flex; align-items: center; gap: 9px; }
+.doc-type-ico { width: 28px; height: 28px; border-radius: 6px; background: var(--bg0); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.doc-type-ico svg { width: 13px; height: 13px; }
+.mono { font-family: 'DM Mono', monospace; font-size: 11.5px; }
+
+/* status badges */
+.sbadge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 8px; border-radius: 20px; font-size: 11px; font-weight: 500; }
+.sbadge.ok { background: var(--s-ok-bg); color: var(--s-ok); }
+.sbadge.err { background: var(--s-err-bg); color: var(--s-err); }
+.sbadge.run { background: var(--s-warn-bg); color: var(--s-warn); }
+.sbadge.idx { background: var(--s-warn-bg); color: var(--s-warn); }
+.sdot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+
+/* KB cards */
+.kb-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+.kb-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r-lg); padding: 16px; cursor: pointer; transition: all .2s; position: relative; overflow: hidden; }
+.kb-card:hover { border-color: var(--border-hi); background: var(--bg2h); }
+.kb-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1.5px; background: var(--rainbow); background-size: 200% auto; animation: rainbowShift 6s linear infinite; opacity: 0; transition: opacity .3s; }
+.kb-card:hover::before { opacity: 1; }
+.kb-card-head { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.kb-ico { width: 36px; height: 36px; border-radius: 9px; background: var(--bg0); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.kb-ico svg { width: 17px; height: 17px; }
+.kb-name { font-size: 13px; font-weight: 500; color: var(--text0); line-height: 1.35; }
+.kb-engine { font-size: 10.5px; color: var(--text2); margin-top: 1px; }
+.kb-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1px; background: var(--border); border-radius: 8px; overflow: hidden; }
+.kb-stat { background: var(--bg0); padding: 9px 8px; text-align: center; }
+.kb-stat-val { font-size: 15px; font-weight: 600; color: var(--text0); font-family: 'DM Mono', monospace; }
+.kb-stat-key { font-size: 9.5px; color: var(--text2); margin-top: 1px; letter-spacing: .04em; }
+.kb-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border); }
+.kb-updated { font-size: 10.5px; color: var(--text2); }
+.kb-status { display: flex; align-items: center; gap: 5px; font-size: 10.5px; }
+.kb-status.ready { color: var(--s-ok); }
+.kb-status.idx { color: var(--s-warn); }
+.kb-status-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+.kb-status.idx .kb-status-dot { animation: blink 1.5s ease-in-out infinite; }
+
+/* history */
+.hist-table { width: 100%; border-collapse: collapse; }
+.hist-table th { font-size: 10px; font-weight: 600; letter-spacing: .09em; text-transform: uppercase; color: var(--text2); padding: 9px 14px; text-align: left; border-bottom: 1px solid var(--border); }
+.hist-table td { padding: 12px 14px; font-size: 12.5px; color: var(--text1); border-bottom: 1px solid rgba(255,255,255,.025); vertical-align: middle; }
+.hist-table tr:hover td { background: var(--bg2); }
+.hist-name { color: var(--text0) !important; font-weight: 500; }
+
+/* templates search */
+.tpl-search { position: relative; margin: 20px 0 22px; }
+.tpl-search input { width: 100%; background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r-md); padding: 11px 40px 11px 16px; font-size: 13.5px; color: var(--text0); outline: none; font-family: inherit; transition: border-color .2s; }
+.tpl-search input::placeholder { color: var(--text2); }
+.tpl-search input:focus { border-color: var(--border-hi); }
+.tpl-search svg { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; color: var(--text2); pointer-events: none; }
+
+/* page switcher */
+.pg-sw { position: fixed; bottom: 22px; right: 28px; display: flex; gap: 6px; z-index: 800; flex-wrap: wrap; justify-content: flex-end; max-width: 640px; }
+.pg-btn { background: rgba(11,12,14,.95); backdrop-filter: blur(12px); border: 1px solid var(--border); border-radius: var(--r-sm); padding: 5px 12px; font-size: 11px; font-weight: 500; color: var(--text1); cursor: pointer; transition: all .2s; font-family: inherit; letter-spacing: .02em; }
+.pg-btn:hover { border-color: var(--border-hi); color: var(--text0); }
+.pg-btn.cur { color: var(--text0); border-color: transparent; background: var(--rainbow); background-size: 200% auto; animation: rainbowShift 6s linear infinite; }
+
+.hdr-btn {
+  background: var(--rainbow); background-size: 200% auto;
+  animation: rainbowShift 6s linear infinite;
+  color: #fff; border: none; padding: 6px 15px; border-radius: var(--r-sm);
+  font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit;
+  transition: transform .2s, box-shadow .2s; text-shadow: 0 1px 3px rgba(0,0,0,.3);
+}
+.hdr-btn:hover { transform: translateY(-1px); box-shadow: 0 3px 14px rgba(100,80,200,.25); }
+
+::-webkit-scrollbar { width: 4px; } ::-webkit-scrollbar-track { background: transparent; } ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<nav>
+  <a class="nav-logo" href="#" onclick="showPage('dashboard');return false;">
+    <!-- MYRIAGON hexagon logo – rainbow gradient -->
+    <svg width="30" height="30" viewBox="0 0 30 30" fill="none">
+      <defs>
+        <linearGradient id="rg1" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%"   stop-color="#ff6b6b"/>
+          <stop offset="25%"  stop-color="#ffd32a"/>
+          <stop offset="50%"  stop-color="#26de81"/>
+          <stop offset="75%"  stop-color="#45aaf2"/>
+          <stop offset="100%" stop-color="#a55eea"/>
+        </linearGradient>
+        <linearGradient id="rg2" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%"   stop-color="#a55eea" stop-opacity=".4"/>
+          <stop offset="100%" stop-color="#45aaf2" stop-opacity=".1"/>
+        </linearGradient>
+      </defs>
+      <polygon points="15,1.8 27.8,8.5 27.8,21.5 15,28.2 2.2,21.5 2.2,8.5"
+        stroke="url(#rg1)" stroke-width="1.4" fill="none"/>
+      <polygon points="15,7 22,11 22,19 15,23 8,19 8,11"
+        stroke="url(#rg1)" stroke-width="0.8" fill="url(#rg2)" opacity="0.6"/>
+      <circle cx="15" cy="15" r="2.5" fill="url(#rg1)"/>
+    </svg>
+    <span class="logo-text rainbow-text">MYRIAGON</span>
+  </a>
+  <div class="nav-links">
+    <span class="nav-link active" onclick="showPage('dashboard')">ダッシュボード</span>
+    <span class="nav-link" onclick="showPage('connections')">接続管理</span>
+    <span class="nav-link" onclick="showPage('knowledge')">ナレッジ管理</span>
+    <span class="nav-link" onclick="showPage('templates')">テンプレート</span>
+    <span class="nav-link" onclick="showPage('history')">実行履歴</span>
+  </div>
+  <div class="nav-avatar">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+      <circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+    </svg>
+  </div>
+</nav>
+
+<div class="app">
+<aside id="sidebar">
+  <div class="sb-tabs">
+    <div class="sb-tab active" id="tab-flow" onclick="switchTab('flow')">MY FLOW</div>
+    <div class="sb-tab" id="tab-rag" onclick="switchTab('rag')">MY RAG</div>
+  </div>
+
+  <!-- FLOW -->
+  <div id="sidebar-flow">
+    <div class="fc active" onclick="showPage('template-detail')">
+      <div class="fc-icons">
+        <div class="svc-ico"><img src="https://www.google.com/s2/favicons?domain=sheets.google.com&sz=64" alt="Sheets"></div>
+        <div class="svc-ico"><img src="https://www.google.com/s2/favicons?domain=openai.com&sz=64" alt="OpenAI"></div>
+        <div class="ico-add">+</div>
+      </div>
+      <div class="fc-title">Google Sheets × GPT-4o 分析フロー</div>
+      <div class="fc-desc">スプレッドシートとAI対話を連携</div>
+    </div>
+    <div class="fc" onclick="showPage('template-detail')">
+      <div class="fc-icons">
+        <div class="svc-ico"><img src="https://www.google.com/s2/favicons?domain=gmail.com&sz=64" alt="Gmail"></div>
+        <div class="svc-ico"><img src="https://www.google.com/s2/favicons?domain=slack.com&sz=64" alt="Slack"></div>
+        <div class="ico-add">+</div>
+      </div>
+      <div class="fc-title">メール自動分類 & Slack通知</div>
+      <div class="fc-desc">受信メールを自動タグ付け・転送</div>
+    </div>
+    <div class="fc inactive">
+      <div class="fc-icons">
+        <div class="svc-ico" style="opacity:.4"><img src="https://www.google.com/s2/favicons?domain=adobe.com&sz=64" alt="PDF"></div>
+        <div class="svc-ico" style="opacity:.4"><img src="https://www.google.com/s2/favicons?domain=supabase.com&sz=64" alt="Supabase"></div>
+        <div class="ico-add">+</div>
+      </div>
+      <div class="fc-title">請求書OCRパイプライン</div>
+      <div class="fc-desc">PDFを自動読み取り・データ抽出</div>
+    </div>
+    <div class="sb-label">OTHER</div>
+    <div class="fc inactive">
+      <div class="fc-icons">
+        <div class="svc-ico" style="opacity:.4"><img src="https://www.google.com/s2/favicons?domain=notion.so&sz=64" alt="Notion"></div>
+        <div class="svc-ico" style="opacity:.4"><img src="https://www.google.com/s2/favicons?domain=slack.com&sz=64" alt="Slack"></div>
+        <div class="ico-add">+</div>
+      </div>
+      <div class="fc-title">Notion → Weekly Report</div>
+      <div class="fc-desc">進捗を毎週自動でチームへ報告</div>
+    </div>
+  </div>
+
+  <!-- RAG -->
+  <div id="sidebar-rag" style="display:none">
+    <div class="rc-section">ドキュメント</div>
+    <div class="rc active">
+      <div class="rc-icon"><svg viewBox="0 0 24 24" fill="none" stroke="var(--text1)" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+      <div class="rc-body"><div class="rc-title">製品カタログ 2025.pdf</div><div class="rc-meta">1,248 chunks · 4.2 MB</div></div>
+      <div class="rc-dot ready"></div>
+    </div>
+    <div class="rc">
+      <div class="rc-icon"><svg viewBox="0 0 24 24" fill="none" stroke="var(--text1)" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg></div>
+      <div class="rc-body"><div class="rc-title">Q4 売上データ.xlsx</div><div class="rc-meta">892 chunks · 1.8 MB</div></div>
+      <div class="rc-dot ready"></div>
+    </div>
+    <div class="rc">
+      <div class="rc-icon"><svg viewBox="0 0 24 24" fill="none" stroke="var(--text1)" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+      <div class="rc-body"><div class="rc-title">社内規程集 2025.docx</div><div class="rc-meta">インデックス中 54%</div></div>
+      <div class="rc-dot idx"></div>
+    </div>
+    <div class="rc">
+      <div class="rc-icon"><svg viewBox="0 0 24 24" fill="none" stroke="var(--text1)" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></div>
+      <div class="rc-body"><div class="rc-title">コーポレートサイト</div><div class="rc-meta">347 chunks · URL</div></div>
+      <div class="rc-dot ready"></div>
+    </div>
+    <div class="rc-section" style="margin-top:4px">ナレッジベース</div>
+    <div class="rc">
+      <div class="rc-icon"><svg viewBox="0 0 24 24" fill="none" stroke="var(--text1)" stroke-width="1.8"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg></div>
+      <div class="rc-body"><div class="rc-title">製品 KB</div><div class="rc-meta">Supabase · 2,140 vectors</div></div>
+      <div class="rc-dot ready"></div>
+    </div>
+    <div class="rc">
+      <div class="rc-icon"><svg viewBox="0 0 24 24" fill="none" stroke="var(--text1)" stroke-width="1.8"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg></div>
+      <div class="rc-body"><div class="rc-title">サポート FAQ KB</div><div class="rc-meta">Supabase · 520 vectors</div></div>
+      <div class="rc-dot ready"></div>
+    </div>
+  </div>
+
+  <div class="sb-bottom">
+    <div class="settings-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      Settings
+    </div>
+  </div>
+</aside>
+
+<main>
+
+  <!-- DASHBOARD -->
+  <div class="page visible" id="page-dashboard">
+    <div class="ask-wrap">
+      <textarea class="ask-box" placeholder="フローについて質問する、または新しいフローを作成..."></textarea>
+      <div class="ask-rainbow-ring"></div>
+      <button class="ask-send">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
+          <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+        </svg>
+      </button>
+    </div>
+    <div class="sh">
+      <span class="sh-title">Recommended FLOW</span>
+      <div class="sh-line"></div>
+      <span class="sh-link" onclick="showPage('templates')">すべて見る →</span>
+    </div>
+    <div class="flow-grid">
+      <div class="fg-card" onclick="showPage('template-detail')">
+        <div class="fg-icons"><div class="fg-icon"><img src="https://www.google.com/s2/favicons?domain=sheets.google.com&sz=64" alt="Sheets"></div><div class="fg-icon"><img src="https://www.google.com/s2/favicons?domain=openai.com&sz=64" alt="OpenAI"></div></div>
+        <div class="fg-title">Talk to your Google Sheets using GPT-4o</div>
+        <div class="fg-desc">スプレッドシートのデータをAIと自然言語で対話。複雑な分析を簡単に実行。</div>
+        <span class="fg-badge">人気</span>
+      </div>
+      <div class="fg-card" onclick="showPage('template-detail')">
+        <div class="fg-icons"><div class="fg-icon"><img src="https://www.google.com/s2/favicons?domain=gmail.com&sz=64" alt="Gmail"></div><div class="fg-icon"><img src="https://www.google.com/s2/favicons?domain=anthropic.com&sz=64" alt="Claude"></div></div>
+        <div class="fg-title">Email Triage & Auto-Reply with Claude</div>
+        <div class="fg-desc">受信メールをAIが分類し、優先度に応じて自動返信・Slack通知を送信。</div>
+        <span class="fg-badge">新着</span>
+      </div>
+      <div class="fg-card" onclick="showPage('template-detail')">
+        <div class="fg-icons"><div class="fg-icon"><img src="https://www.google.com/s2/favicons?domain=adobe.com&sz=64" alt="PDF"></div><div class="fg-icon"><img src="https://www.google.com/s2/favicons?domain=supabase.com&sz=64" alt="Supabase"></div></div>
+        <div class="fg-title">Invoice OCR → Accounting DB Sync</div>
+        <div class="fg-desc">PDFの請求書を自動読み取りし、会計システムへリアルタイムで同期。</div>
+        <span class="fg-badge">業務</span>
+      </div>
+      <div class="fg-card" onclick="showPage('template-detail')">
+        <div class="fg-icons"><div class="fg-icon"><img src="https://www.google.com/s2/favicons?domain=notion.so&sz=64" alt="Notion"></div><div class="fg-icon"><img src="https://www.google.com/s2/favicons?domain=slack.com&sz=64" alt="Slack"></div></div>
+        <div class="fg-title">Notion DB → Weekly Report Slack Bot</div>
+        <div class="fg-desc">Notionの進捗データを集計し、毎週月曜に自動でチームへ報告。</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TEMPLATE DETAIL -->
+  <div class="page" id="page-template-detail">
+    <a class="back-link" onclick="showPage('dashboard')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      テンプレート一覧に戻る
+    </a>
+    <div class="tpl-layout">
+      <div>
+        <div class="tpl-tags"><span class="tag">AI Agent</span><span class="tag">Google Sheets</span><span class="tag">LLM</span></div>
+        <div class="tpl-title">Talk to your Google Sheets using GPT-4o</div>
+        <div class="tpl-btns">
+          <button class="btn-p">Use for free</button>
+          <button class="btn-s">Preview</button>
+        </div>
+        <div class="sec-head">概要</div>
+        <div class="tpl-desc">スプレッドシートのデータをAIエージェントと自然言語で対話できるフロー。複雑なクエリも直感的な日本語で指示するだけで、データの集計・分析・可視化が即座に実行されます。</div>
+        <div class="sec-head" style="margin-bottom:9px">使用ノード</div>
+        <div class="nodes-list">
+          <div class="ni"><div class="ni-ico"><svg viewBox="0 0 24 24" fill="none" stroke="var(--text1)" stroke-width="1.8"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div><span class="ni-name">Webhook Trigger</span><span class="ni-type">trigger</span></div>
+          <div class="ni"><div class="ni-ico"><img src="https://www.google.com/s2/favicons?domain=sheets.google.com&sz=64" alt="Sheets"></div><span class="ni-name">Google Sheets</span><span class="ni-type">data</span></div>
+          <div class="ni"><div class="ni-ico"><img src="https://www.google.com/s2/favicons?domain=openai.com&sz=64" alt="OpenAI"></div><span class="ni-name">OpenAI Chat Model</span><span class="ni-type">ai</span></div>
+          <div class="ni"><div class="ni-ico"><svg viewBox="0 0 24 24" fill="none" stroke="var(--text1)" stroke-width="1.8"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></div><span class="ni-name">Respond to Webhook</span><span class="ni-type">output</span></div>
+        </div>
+      </div>
+      <div>
+        <div class="wf-area">
+          <div class="wf-grid"></div>
+          <div class="wf">
+            <div class="wf-node">
+              <div class="wf-box trigger"><svg viewBox="0 0 24 24" fill="none" stroke="var(--text1)" stroke-width="1.8" width="22" height="22"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div>
+              <div class="wf-label">Webhook</div>
+            </div>
+            <div class="wf-conn on"></div>
+            <div class="wf-node">
+              <div class="wf-box on"><img src="https://www.google.com/s2/favicons?domain=sheets.google.com&sz=64" alt="Sheets"></div>
+              <div class="wf-label">Google Sheets</div>
+            </div>
+            <div class="wf-conn on"></div>
+            <div class="wf-node">
+              <div class="wf-box"><img src="https://www.google.com/s2/favicons?domain=openai.com&sz=64" alt="OpenAI"></div>
+              <div class="wf-label">AI Agent</div>
+            </div>
+            <div class="wf-conn"></div>
+            <div class="wf-node">
+              <div class="wf-box"><svg viewBox="0 0 24 24" fill="none" stroke="var(--text1)" stroke-width="1.6" width="22" height="22"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></div>
+              <div class="wf-label">Respond</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONNECTIONS -->
+  <div class="page" id="page-connections">
+    <div class="sh"><h2>接続管理</h2><div class="sh-line"></div><button class="hdr-btn">+ 接続を追加</button></div>
+    <div class="sh" style="margin:20px 0 12px"><span class="sh-title">接続済み</span><div class="sh-line"></div></div>
+    <div class="conn-grid">
+      <div class="cc connected"><div class="cc-ico"><img src="https://www.google.com/s2/favicons?domain=sheets.google.com&sz=64" alt="Sheets"></div><div class="cc-name">Google Sheets</div><div class="cc-status ok">● 接続済み</div></div>
+      <div class="cc connected"><div class="cc-ico"><img src="https://www.google.com/s2/favicons?domain=openai.com&sz=64" alt="OpenAI"></div><div class="cc-name">OpenAI</div><div class="cc-status ok">● 接続済み</div></div>
+      <div class="cc connected"><div class="cc-ico"><img src="https://www.google.com/s2/favicons?domain=slack.com&sz=64" alt="Slack"></div><div class="cc-name">Slack</div><div class="cc-status ok">● 接続済み</div></div>
+      <div class="cc connected"><div class="cc-ico"><img src="https://www.google.com/s2/favicons?domain=anthropic.com&sz=64" alt="Anthropic"></div><div class="cc-name">Anthropic Claude</div><div class="cc-status ok">● 接続済み</div></div>
+    </div>
+    <div class="sh" style="margin-bottom:12px"><span class="sh-title">未接続</span><div class="sh-line"></div></div>
+    <div class="conn-grid">
+      <div class="cc"><div class="cc-ico"><img src="https://www.google.com/s2/favicons?domain=gmail.com&sz=64" alt="Gmail"></div><div class="cc-name">Gmail</div><div class="cc-status none">未接続</div></div>
+      <div class="cc"><div class="cc-ico"><img src="https://www.google.com/s2/favicons?domain=supabase.com&sz=64" alt="Supabase"></div><div class="cc-name">Supabase</div><div class="cc-status none">未接続</div></div>
+      <div class="cc"><div class="cc-ico"><img src="https://www.google.com/s2/favicons?domain=drive.google.com&sz=64" alt="Drive"></div><div class="cc-name">Google Drive</div><div class="cc-status none">未接続</div></div>
+      <div class="cc"><div class="cc-ico"><img src="https://www.google.com/s2/favicons?domain=notion.so&sz=64" alt="Notion"></div><div class="cc-name">Notion</div><div class="cc-status none">未接続</div></div>
+      <div class="cc"><div class="cc-ico"><img src="https://www.google.com/s2/favicons?domain=hubspot.com&sz=64" alt="HubSpot"></div><div class="cc-name">HubSpot</div><div class="cc-status none">未接続</div></div>
+      <div class="cc"><div class="cc-ico"><img src="https://www.google.com/s2/favicons?domain=stripe.com&sz=64" alt="Stripe"></div><div class="cc-name">Stripe</div><div class="cc-status none">未接続</div></div>
+    </div>
+  </div>
+
+  <!-- KNOWLEDGE -->
+  <div class="page" id="page-knowledge">
+    <div class="sh"><h2>ナレッジ管理</h2><div class="sh-line"></div><button class="hdr-btn">+ 追加</button></div>
+    <div class="upload-zone" style="margin-top:20px">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      <p>ドキュメントをドラッグ＆ドロップ、または<span>クリックしてアップロード</span></p>
+    </div>
+    <div class="sh" style="margin-bottom:14px"><span class="sh-title">ドキュメント</span><div class="sh-line"></div><span style="font-size:11px;color:var(--text2)">4 件</span></div>
+    <table class="doc-table">
+      <thead><tr><th>ファイル名</th><th>タイプ</th><th>チャンク数</th><th>サイズ</th><th>更新日</th><th>ステータス</th></tr></thead>
+      <tbody>
+        <tr><td><div class="doc-name"><div class="doc-type-ico"><svg viewBox="0 0 24 24" fill="none" stroke="var(--text1)" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>製品カタログ 2025年版.pdf</div></td><td class="mono" style="color:var(--text2)">PDF</td><td class="mono">1,248</td><td class="mono">4.2 MB</td><td style="font-size:11.5px">2025/02/10</td><td><span class="sbadge ok"><span class="sdot"></span>完了</span></td></tr>
+        <tr><td><div class="doc-name"><div class="doc-type-ico"><svg viewBox="0 0 24 24" fill="none" stroke="var(--text1)" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg></div>Q4 売上データ.xlsx</div></td><td class="mono" style="color:var(--text2)">XLSX</td><td class="mono">892</td><td class="mono">1.8 MB</td><td style="font-size:11.5px">2025/02/08</td><td><span class="sbadge ok"><span class="sdot"></span>完了</span></td></tr>
+        <tr><td><div class="doc-name"><div class="doc-type-ico"><svg viewBox="0 0 24 24" fill="none" stroke="var(--text1)" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>社内規程集 2025改訂版.docx</div></td><td class="mono" style="color:var(--text2)">DOCX</td><td class="mono">—</td><td class="mono">892 KB</td><td style="font-size:11.5px">2025/02/15</td><td><span class="sbadge idx"><span class="sdot"></span>処理中 54%</span></td></tr>
+        <tr><td><div class="doc-name"><div class="doc-type-ico"><svg viewBox="0 0 24 24" fill="none" stroke="var(--text1)" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></div>コーポレートサイト (URL)</div></td><td class="mono" style="color:var(--text2)">URL</td><td class="mono">347</td><td class="mono">—</td><td style="font-size:11.5px">2025/02/15</td><td><span class="sbadge ok"><span class="sdot"></span>完了</span></td></tr>
+      </tbody>
+    </table>
+    <div class="sh" style="margin-bottom:16px"><span class="sh-title">ナレッジベース (Vector DB)</span><div class="sh-line"></div><button class="hdr-btn">+ 新規作成</button></div>
+    <div class="kb-grid">
+      <div class="kb-card"><div class="kb-card-head"><div class="kb-ico"><svg viewBox="0 0 24 24" fill="none" stroke="var(--text1)" stroke-width="1.8"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg></div><div><div class="kb-name">製品ナレッジベース</div><div class="kb-engine">Supabase pgvector</div></div></div><div class="kb-stats"><div class="kb-stat"><div class="kb-stat-val">2,140</div><div class="kb-stat-key">VECTORS</div></div><div class="kb-stat"><div class="kb-stat-val">1,536</div><div class="kb-stat-key">DIM</div></div><div class="kb-stat"><div class="kb-stat-val">2</div><div class="kb-stat-key">DOCS</div></div></div><div class="kb-foot"><span class="kb-updated">更新: 2025/02/10</span><span class="kb-status ready"><span class="kb-status-dot"></span>Ready</span></div></div>
+      <div class="kb-card"><div class="kb-card-head"><div class="kb-ico"><svg viewBox="0 0 24 24" fill="none" stroke="var(--text1)" stroke-width="1.8"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg></div><div><div class="kb-name">サポートFAQ KB</div><div class="kb-engine">Supabase pgvector</div></div></div><div class="kb-stats"><div class="kb-stat"><div class="kb-stat-val">520</div><div class="kb-stat-key">VECTORS</div></div><div class="kb-stat"><div class="kb-stat-val">1,536</div><div class="kb-stat-key">DIM</div></div><div class="kb-stat"><div class="kb-stat-val">1</div><div class="kb-stat-key">DOCS</div></div></div><div class="kb-foot"><span class="kb-updated">更新: 2025/02/05</span><span class="kb-status ready"><span class="kb-status-dot"></span>Ready</span></div></div>
+      <div class="kb-card"><div class="kb-card-head"><div class="kb-ico"><svg viewBox="0 0 24 24" fill="none" stroke="var(--text1)" stroke-width="1.8"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg></div><div><div class="kb-name">社内規程 KB</div><div class="kb-engine">Supabase pgvector</div></div></div><div class="kb-stats"><div class="kb-stat"><div class="kb-stat-val">—</div><div class="kb-stat-key">VECTORS</div></div><div class="kb-stat"><div class="kb-stat-val">1,536</div><div class="kb-stat-key">DIM</div></div><div class="kb-stat"><div class="kb-stat-val">1</div><div class="kb-stat-key">DOCS</div></div></div><div class="kb-foot"><span class="kb-updated">構築中...</span><span class="kb-status idx"><span class="kb-status-dot"></span>Indexing</span></div></div>
+      <div class="kb-card"><div class="kb-card-head"><div class="kb-ico"><svg viewBox="0 0 24 24" fill="none" stroke="var(--text1)" stroke-width="1.8"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg></div><div><div class="kb-name">Webサイト KB</div><div class="kb-engine">Supabase pgvector</div></div></div><div class="kb-stats"><div class="kb-stat"><div class="kb-stat-val">347</div><div class="kb-stat-key">VECTORS</div></div><div class="kb-stat"><div class="kb-stat-val">1,536</div><div class="kb-stat-key">DIM</div></div><div class="kb-stat"><div class="kb-stat-val">1</div><div class="kb-stat-key">DOCS</div></div></div><div class="kb-foot"><span class="kb-updated">更新: 2025/02/15</span><span class="kb-status ready"><span class="kb-status-dot"></span>Ready</span></div></div>
+    </div>
+  </div>
+
+  <!-- TEMPLATES -->
+  <div class="page" id="page-templates">
+    <div class="sh"><h2>テンプレート</h2><div class="sh-line"></div></div>
+    <div class="tpl-search">
+      <input type="text" placeholder="テンプレートを検索...">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    </div>
+    <div class="flow-grid">
+      <div class="fg-card" onclick="showPage('template-detail')"><div class="fg-icons"><div class="fg-icon"><img src="https://www.google.com/s2/favicons?domain=sheets.google.com&sz=64" alt="Sheets"></div><div class="fg-icon"><img src="https://www.google.com/s2/favicons?domain=openai.com&sz=64" alt="OpenAI"></div></div><div class="fg-title">Talk to your Google Sheets using GPT-4o</div><div class="fg-desc">スプレッドシートとAI対話。</div><span class="fg-badge">人気</span></div>
+      <div class="fg-card" onclick="showPage('template-detail')"><div class="fg-icons"><div class="fg-icon"><img src="https://www.google.com/s2/favicons?domain=gmail.com&sz=64" alt="Gmail"></div><div class="fg-icon"><img src="https://www.google.com/s2/favicons?domain=anthropic.com&sz=64" alt="Anthropic"></div></div><div class="fg-title">Email Triage & Auto-Reply</div><div class="fg-desc">メールをAIで分類・自動返信。</div><span class="fg-badge">新着</span></div>
+      <div class="fg-card" onclick="showPage('template-detail')"><div class="fg-icons"><div class="fg-icon"><img src="https://www.google.com/s2/favicons?domain=adobe.com&sz=64" alt="Adobe"></div><div class="fg-icon"><img src="https://www.google.com/s2/favicons?domain=supabase.com&sz=64" alt="Supabase"></div></div><div class="fg-title">Invoice OCR → DB Sync</div><div class="fg-desc">請求書PDFを自動読み取り・同期。</div><span class="fg-badge">業務</span></div>
+      <div class="fg-card" onclick="showPage('template-detail')"><div class="fg-icons"><div class="fg-icon"><img src="https://www.google.com/s2/favicons?domain=notion.so&sz=64" alt="Notion"></div><div class="fg-icon"><img src="https://www.google.com/s2/favicons?domain=slack.com&sz=64" alt="Slack"></div></div><div class="fg-title">Notion DB → Weekly Slack Report</div><div class="fg-desc">進捗を毎週自動で報告。</div></div>
+      <div class="fg-card" onclick="showPage('template-detail')"><div class="fg-icons"><div class="fg-icon"><img src="https://www.google.com/s2/favicons?domain=drive.google.com&sz=64" alt="Drive"></div><div class="fg-icon"><img src="https://www.google.com/s2/favicons?domain=anthropic.com&sz=64" alt="Anthropic"></div></div><div class="fg-title">Drive Document RAG Q&A</div><div class="fg-desc">社内ドキュメントへのチャットボット。</div><span class="fg-badge">新着</span></div>
+      <div class="fg-card" onclick="showPage('template-detail')"><div class="fg-icons"><div class="fg-icon"><img src="https://www.google.com/s2/favicons?domain=hubspot.com&sz=64" alt="HubSpot"></div><div class="fg-icon"><img src="https://www.google.com/s2/favicons?domain=slack.com&sz=64" alt="Slack"></div></div><div class="fg-title">HubSpot CRM → Slack Deal Alert</div><div class="fg-desc">商談更新をリアルタイムで通知。</div></div>
+    </div>
+  </div>
+
+  <!-- HISTORY -->
+  <div class="page" id="page-history">
+    <div class="sh"><h2>実行履歴</h2><div class="sh-line"></div></div>
+    <table class="hist-table" style="margin-top:20px">
+      <thead><tr><th>フロー名</th><th>実行日時</th><th>所要時間</th><th>ステータス</th><th>トリガー</th></tr></thead>
+      <tbody>
+        <tr><td class="hist-name">Google Sheets × GPT-4o 分析フロー</td><td>2025/02/15 14:32</td><td class="mono">1.24s</td><td><span class="sbadge ok"><span class="sdot"></span>成功</span></td><td>Webhook</td></tr>
+        <tr><td class="hist-name">メール自動分類フロー</td><td>2025/02/15 13:18</td><td class="mono">3.50s</td><td><span class="sbadge ok"><span class="sdot"></span>成功</span></td><td>Email</td></tr>
+        <tr><td class="hist-name">請求書OCRパイプライン</td><td>2025/02/15 11:05</td><td class="mono">—</td><td><span class="sbadge run"><span class="sdot"></span>実行中</span></td><td>Cron</td></tr>
+        <tr><td class="hist-name">Google Sheets × GPT-4o 分析フロー</td><td>2025/02/15 09:44</td><td class="mono">0.98s</td><td><span class="sbadge ok"><span class="sdot"></span>成功</span></td><td>Webhook</td></tr>
+        <tr><td class="hist-name">アラート配信フロー</td><td>2025/02/14 22:11</td><td class="mono">—</td><td><span class="sbadge err"><span class="sdot"></span>エラー</span></td><td>Webhook</td></tr>
+        <tr><td class="hist-name">Notion → Weekly Report</td><td>2025/02/14 09:00</td><td class="mono">2.38s</td><td><span class="sbadge ok"><span class="sdot"></span>成功</span></td><td>Cron</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+</main>
+</div>
+
+<div class="pg-sw">
+  <button class="pg-btn cur" id="btn-dashboard" onclick="showPage('dashboard')">ダッシュボード</button>
+  <button class="pg-btn" id="btn-template-detail" onclick="showPage('template-detail')">テンプレート詳細</button>
+  <button class="pg-btn" id="btn-connections" onclick="showPage('connections')">接続管理</button>
+  <button class="pg-btn" id="btn-knowledge" onclick="showPage('knowledge')">ナレッジ管理</button>
+  <button class="pg-btn" id="btn-templates" onclick="showPage('templates')">テンプレート</button>
+  <button class="pg-btn" id="btn-history" onclick="showPage('history')">実行履歴</button>
+</div>
+
+<script>
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('visible'));
+  document.querySelectorAll('.pg-btn').forEach(b => b.classList.remove('cur'));
+  document.querySelectorAll('.nav-link').forEach(b => b.classList.remove('active'));
+  const el = document.getElementById('page-' + name);
+  if (el) el.classList.add('visible');
+  const btn = document.getElementById('btn-' + name);
+  if (btn) btn.classList.add('cur');
+  const map = {dashboard:0,connections:1,knowledge:2,templates:3,history:4,'template-detail':3};
+  const nl = document.querySelectorAll('.nav-link');
+  if (map[name] !== undefined && nl[map[name]]) nl[map[name]].classList.add('active');
+  document.querySelectorAll('.fc').forEach(c => c.classList.remove('active'));
+  if (name === 'template-detail' || name === 'dashboard') {
+    const f = document.querySelector('#sidebar-flow .fc');
+    if (f) f.classList.add('active');
+  }
+}
+function switchTab(tab) {
+  document.querySelectorAll('.sb-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  document.getElementById('sidebar-flow').style.display = tab === 'flow' ? 'block' : 'none';
+  document.getElementById('sidebar-rag').style.display  = tab === 'rag'  ? 'block' : 'none';
+}
+</script>
+</body>
+</html>

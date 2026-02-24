@@ -1,0 +1,1363 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MYRIAGON</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=DM+Mono:wght@400;500&family=Noto+Sans+JP:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://js.stripe.com/v3/"></script>
+<style>
+:root {
+  --bg0: #070809;
+  --bg1: #0b0c0e;
+  --bg2: #101214;
+  --bg2h: #151819;
+  --border: rgba(255,255,255,0.07);
+  --border-hi: rgba(255,255,255,0.14);
+  --text0: #e6e8ec;
+  --text1: #6a7585;
+  --text2: #3c4556;
+  --sw: 260px;
+  --nh: 54px;
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 14px;
+
+  /* ── Rainbow gradient – the MYRIAGON identity ── */
+  --rainbow: linear-gradient(
+    90deg,
+    #ff6b6b 0%,
+    #ff9f43 16%,
+    #ffd32a 32%,
+    #26de81 48%,
+    #45aaf2 64%,
+    #a55eea 80%,
+    #ff6b6b 100%
+  );
+  /* Softer version for borders/glows */
+  --rainbow-soft: linear-gradient(
+    90deg,
+    rgba(255,107,107,0.7) 0%,
+    rgba(255,159,67,0.7) 16%,
+    rgba(255,211,42,0.7) 32%,
+    rgba(38,222,129,0.7) 48%,
+    rgba(69,170,242,0.7) 64%,
+    rgba(165,94,234,0.7) 80%,
+    rgba(255,107,107,0.7) 100%
+  );
+  --rainbow-glow: rgba(100, 120, 220, 0.08);
+
+  --s-ok: #4ade80;
+  --s-ok-bg: rgba(74,222,128,0.08);
+  --s-warn: #fb923c;
+  --s-warn-bg: rgba(251,146,60,0.08);
+  --s-err: #f87171;
+  --s-err-bg: rgba(248,113,113,0.08);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'DM Sans','Noto Sans JP',sans-serif;background:var(--bg0);color:var(--text0);min-height:100vh;overflow-x:hidden;}
+body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.72' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23g)' opacity='0.025'/%3E%3C/svg%3E");opacity:1;}
+
+/* ── Rainbow utility classes ── */
+.rainbow-text {
+  background: var(--rainbow);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: rainbowShift 6s linear infinite;
+}
+.rainbow-border {
+  position: relative;
+}
+.rainbow-border::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: var(--rainbow);
+  background-size: 200% auto;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: rainbowShift 6s linear infinite;
+  pointer-events: none;
+}
+@keyframes rainbowShift {
+  0%   { background-position: 0% center; }
+  100% { background-position: 200% center; }
+}
+
+/* ── NAV ── */
+nav {
+  position: fixed; inset: 0 0 auto; height: var(--nh); z-index: 500;
+  background: rgba(7,8,9,0.92); backdrop-filter: blur(28px) saturate(160%);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; padding: 0 24px;
+}
+.nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; margin-right: auto; }
+.logo-text {
+  font-size: 13.5px; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase;
+}
+.nav-links { display: flex; gap: 1px; }
+.nav-link {
+  font-size: 13px; color: var(--text1); padding: 5px 13px;
+  border-radius: var(--r-sm); transition: color .15s, background .15s; cursor: pointer; letter-spacing: .01em;
+}
+.nav-link:hover { color: var(--text0); background: rgba(255,255,255,0.05); }
+.nav-link.active { color: var(--text0); }
+.nav-avatar {
+  width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--border);
+  background: var(--bg2); cursor: pointer; margin-left: 14px;
+  display: flex; align-items: center; justify-content: center; transition: border-color .2s; flex-shrink: 0;
+}
+.nav-avatar:hover { border-color: var(--border-hi); }
+.nav-avatar svg { width: 14px; height: 14px; color: var(--text1); }
+.nav-avatar img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+
+/* ── LAYOUT ── */
+.app { display: flex; padding-top: var(--nh); min-height: 100vh; }
+
+/* ── SIDEBAR ── */
+aside {
+  width: var(--sw); min-height: calc(100vh - var(--nh)); background: var(--bg1);
+  border-right: 1px solid var(--border); position: fixed; top: var(--nh); left: 0;
+  display: flex; flex-direction: column; padding: 14px 10px; overflow-y: auto;
+}
+.sb-tabs {
+  display: flex; background: var(--bg0); border: 1px solid var(--border);
+  border-radius: var(--r-md); padding: 3px; gap: 2px; margin-bottom: 14px;
+}
+.sb-tab {
+  flex: 1; text-align: center; padding: 6px 0; font-size: 11.5px; font-weight: 500;
+  letter-spacing: .05em; color: var(--text2); border-radius: 8px; cursor: pointer;
+  transition: all .2s; user-select: none;
+}
+.sb-tab.active { background: var(--bg2); color: var(--text0); box-shadow: 0 1px 6px rgba(0,0,0,.6); }
+
+.sb-label {
+  font-size: 9.5px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--text2); padding: 10px 8px 5px;
+}
+
+/* flow card */
+.fc {
+  border-radius: var(--r-md); padding: 10px 10px 10px 12px;
+  border: 1px solid transparent; cursor: pointer; transition: all .2s; position: relative;
+}
+.fc:hover { background: var(--bg2); border-color: var(--border); }
+.fc.active { background: var(--bg2); border-color: transparent; }
+
+/* Rainbow left bar on active flow card */
+.fc.active::before {
+  content: '';
+  position: absolute; left: 0; top: 16%; bottom: 16%;
+  width: 2.5px; border-radius: 2px;
+  background: var(--rainbow);
+  background-size: 200% auto;
+  animation: rainbowShift 4s linear infinite;
+}
+/* Subtle rainbow border on active */
+.fc.active::after {
+  content: '';
+  position: absolute; inset: 0;
+  border-radius: var(--r-md);
+  border: 1px solid transparent;
+  background: linear-gradient(var(--bg2), var(--bg2)) padding-box,
+              var(--rainbow) border-box;
+  background-size: auto, 200% auto;
+  animation: rainbowShift 6s linear infinite;
+  pointer-events: none;
+}
+
+.fc-icons { display: flex; gap: 5px; margin-bottom: 8px; align-items: center; }
+.svc-ico {
+  width: 26px; height: 26px; border-radius: 6px; background: var(--bg0);
+  border: 1px solid var(--border); display: flex; align-items: center; justify-content: center;
+  overflow: hidden; flex-shrink: 0; transition: border-color .2s;
+}
+.svc-ico img { width: 16px; height: 16px; object-fit: contain; }
+.fc:hover .svc-ico, .fc.active .svc-ico { border-color: rgba(255,255,255,0.12); }
+.ico-add {
+  width: 26px; height: 26px; border-radius: 6px; border: 1px dashed var(--text2);
+  display: flex; align-items: center; justify-content: center; color: var(--text2);
+  font-size: 15px; cursor: pointer; transition: all .2s; line-height: 1; flex-shrink: 0;
+}
+.ico-add:hover { border-color: var(--text1); color: var(--text1); }
+.fc-title { font-size: 12px; font-weight: 500; color: var(--text0); line-height: 1.4; margin-bottom: 2px; }
+.fc.inactive .fc-title { color: var(--text1); }
+.fc-desc { font-size: 11px; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* RAG sidebar */
+.rc {
+  border-radius: var(--r-md); padding: 9px 10px; border: 1px solid transparent;
+  cursor: pointer; transition: all .2s; display: flex; align-items: center; gap: 9px;
+}
+.rc:hover { background: var(--bg2); border-color: var(--border); }
+.rc.active { background: var(--bg2); }
+.rc-icon {
+  width: 30px; height: 30px; border-radius: 7px; background: var(--bg0);
+  border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.rc-icon svg { width: 14px; height: 14px; }
+.rc-body { flex: 1; min-width: 0; }
+.rc-title { font-size: 12px; font-weight: 500; color: var(--text0); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 1px; }
+.rc-meta { font-size: 10.5px; color: var(--text2); }
+.rc-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.rc-dot.ready { background: var(--s-ok); }
+.rc-dot.idx { background: var(--s-warn); animation: blink 1.5s ease-in-out infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+.rc-section {
+  font-size: 9px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--text2); padding: 10px 10px 5px; display: flex; align-items: center; gap: 8px;
+}
+.rc-section::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+.sb-bottom { margin-top: auto; padding: 10px 8px 4px; border-top: 1px solid var(--border); }
+.settings-link {
+  display: flex; align-items: center; gap: 8px; padding: 8px;
+  border-radius: var(--r-sm); color: var(--text2); font-size: 12px; cursor: pointer; transition: all .15s;
+}
+.settings-link:hover { color: var(--text1); background: var(--bg2); }
+.settings-link svg { width: 13px; height: 13px; flex-shrink: 0; }
+
+/* ── MAIN ── */
+main { margin-left: var(--sw); flex: 1; padding: 32px 40px; min-height: calc(100vh - var(--nh)); }
+
+/* ask box */
+.ask-wrap { position: relative; margin-bottom: 40px; }
+.ask-box {
+  width: 100%; background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--r-lg); padding: 16px 52px 16px 18px;
+  font-size: 14px; color: var(--text0); outline: none; resize: none; min-height: 80px;
+  font-family: inherit; line-height: 1.65; transition: border-color .2s, box-shadow .2s;
+}
+.ask-box::placeholder { color: var(--text2); }
+.ask-box:focus {
+  border-color: transparent;
+  box-shadow: 0 0 0 1px transparent, 0 4px 28px rgba(0,0,0,.5);
+  background-image: linear-gradient(var(--bg2), var(--bg2));
+  background-origin: border-box;
+  /* Rainbow border on focus */
+  outline: none;
+}
+/* Rainbow border wrapper for ask box */
+.ask-wrap .ask-rainbow-ring {
+  position: absolute; inset: 0; border-radius: var(--r-lg);
+  padding: 1px;
+  background: var(--border);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+  pointer-events: none; transition: background .2s;
+  z-index: 1;
+}
+.ask-box:focus ~ .ask-rainbow-ring {
+  background: var(--rainbow);
+  background-size: 200% auto;
+  animation: rainbowShift 4s linear infinite;
+}
+
+.ask-send {
+  position: absolute; right: 14px; bottom: 14px;
+  width: 32px; height: 32px; border-radius: 7px;
+  background: var(--rainbow); background-size: 200% auto;
+  animation: rainbowShift 6s linear infinite;
+  border: none; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: transform .2s, box-shadow .2s; z-index: 2;
+}
+.ask-send:hover { transform: translateY(-1px); box-shadow: 0 4px 20px rgba(120,80,255,.25); }
+.ask-send svg { color: #fff; }
+
+/* section header */
+.sh { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+.sh-title { font-size: 10.5px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--text2); white-space: nowrap; }
+.sh-line { flex: 1; height: 1px; background: var(--border); }
+.sh-link { font-size: 11.5px; color: var(--text1); text-decoration: none; letter-spacing: .02em; white-space: nowrap; transition: color .15s; cursor: pointer; }
+.sh-link:hover { color: var(--text0); }
+.sh h2 { font-size: 20px; font-weight: 600; letter-spacing: -.02em; color: var(--text0); }
+
+/* flow grid cards */
+.flow-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(268px, 1fr)); gap: 12px; margin-bottom: 44px; }
+.fg-card {
+  background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r-lg);
+  padding: 16px; cursor: pointer; transition: all .25s; position: relative; overflow: hidden;
+}
+.fg-card:hover {
+  background: var(--bg2h); transform: translateY(-2px);
+  box-shadow: 0 8px 32px rgba(0,0,0,.5);
+  border-color: transparent;
+}
+/* Rainbow top stripe on hover */
+.fg-card::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 1.5px;
+  background: var(--rainbow); background-size: 200% auto;
+  animation: rainbowShift 4s linear infinite;
+  opacity: 0; transition: opacity .3s;
+}
+.fg-card:hover::before { opacity: 1; }
+/* Rainbow border on hover */
+.fg-card:hover {
+  box-shadow: 0 8px 32px rgba(0,0,0,.5), inset 0 0 0 1px rgba(255,255,255,0.06);
+}
+
+.fg-icons { display: flex; gap: 5px; margin-bottom: 12px; align-items: center; }
+.fg-icon {
+  width: 30px; height: 30px; border-radius: 7px; background: var(--bg0);
+  border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; overflow: hidden;
+}
+.fg-icon img { width: 18px; height: 18px; object-fit: contain; }
+.fg-title { font-size: 13px; font-weight: 500; color: var(--text0); line-height: 1.45; margin-bottom: 5px; }
+.fg-desc { font-size: 11.5px; color: var(--text1); line-height: 1.55; }
+.fg-badge {
+  display: inline-flex; align-items: center; margin-top: 11px;
+  font-size: 10px; font-weight: 600; letter-spacing: .05em;
+  padding: 2px 8px; border-radius: 20px;
+  background: var(--rainbow); background-size: 300% auto;
+  animation: rainbowShift 6s linear infinite;
+  color: transparent;
+  -webkit-background-clip: text; background-clip: text;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+/* pages */
+.page { display: none; }
+.page.visible { display: block; animation: fadeUp .22s ease-out; }
+@keyframes fadeUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+
+/* template detail */
+.back-link { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text1); text-decoration: none; margin-bottom: 28px; transition: color .15s; cursor: pointer; }
+.back-link:hover { color: var(--text0); }
+.back-link svg { width: 13px; height: 13px; }
+.tpl-layout { display: grid; grid-template-columns: 320px 1fr; gap: 44px; align-items: start; }
+.tpl-tags { display: flex; gap: 7px; flex-wrap: wrap; margin-bottom: 16px; }
+.tag { font-size: 10.5px; font-weight: 500; letter-spacing: .04em; color: var(--text2); background: var(--bg2); border: 1px solid var(--border); padding: 3px 9px; border-radius: 20px; }
+.tpl-title { font-size: 22px; font-weight: 600; letter-spacing: -.02em; line-height: 1.3; margin-bottom: 18px; }
+.tpl-btns { display: flex; gap: 9px; margin-bottom: 26px; }
+
+/* Primary button with rainbow */
+.btn-p {
+  position: relative; overflow: hidden;
+  background: var(--rainbow); background-size: 200% auto;
+  animation: rainbowShift 6s linear infinite;
+  color: #fff; border: none; padding: 9px 22px;
+  border-radius: var(--r-sm); font-size: 13px; font-weight: 600;
+  cursor: pointer; font-family: inherit; transition: transform .2s, box-shadow .2s;
+  text-shadow: 0 1px 3px rgba(0,0,0,.3);
+}
+.btn-p:hover { transform: translateY(-1px); box-shadow: 0 4px 20px rgba(100,80,200,.3); }
+.btn-s {
+  background: transparent; color: var(--text0); border: 1px solid var(--border);
+  padding: 9px 22px; border-radius: var(--r-sm); font-size: 13px; font-weight: 500;
+  cursor: pointer; transition: all .2s; font-family: inherit;
+}
+.btn-s:hover { border-color: var(--border-hi); background: rgba(255,255,255,.04); }
+
+.sec-head { font-size: 10px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--text2); margin-bottom: 9px; }
+.tpl-desc { font-size: 13px; line-height: 1.75; color: var(--text1); margin-bottom: 22px; }
+.nodes-list { display: flex; flex-direction: column; gap: 7px; margin-bottom: 22px; }
+.ni { display: flex; align-items: center; gap: 9px; padding: 9px 11px; background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r-sm); }
+.ni-ico { width: 24px; height: 24px; border-radius: 5px; background: var(--bg0); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0; }
+.ni-ico img { width: 13px; height: 13px; object-fit: contain; }
+.ni-ico svg { width: 12px; height: 12px; }
+.ni-name { font-size: 12px; font-weight: 500; color: var(--text0); }
+.ni-type { font-size: 10.5px; color: var(--text2); margin-left: auto; font-family: 'DM Mono', monospace; }
+
+/* workflow preview */
+.wf-area {
+  background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r-lg);
+  overflow: hidden; aspect-ratio: 16/10; display: flex; align-items: center; justify-content: center; position: relative;
+}
+.wf-grid {
+  position: absolute; inset: 0;
+  background-image: linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px);
+  background-size: 26px 26px;
+}
+.wf { position: relative; z-index: 1; display: flex; align-items: center; }
+.wf-node { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.wf-box { width: 58px; height: 58px; border-radius: 12px; background: var(--bg0); border: 1.5px solid var(--border); display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.wf-box img { width: 28px; height: 28px; object-fit: contain; }
+.wf-box svg { width: 24px; height: 24px; }
+.wf-box.on { border-color: transparent; position: relative; }
+/* Rainbow border on active wf node */
+.wf-box.on::after {
+  content: '';
+  position: absolute; inset: -1.5px;
+  border-radius: 12px;
+  background: var(--rainbow);
+  background-size: 200% auto;
+  animation: rainbowShift 4s linear infinite;
+  z-index: -1;
+}
+.wf-box.trigger { border-color: rgba(255,255,255,.2); }
+.wf-label { font-size: 10px; color: var(--text2); text-align: center; max-width: 70px; line-height: 1.3; }
+.wf-conn { width: 36px; height: 1.5px; background: var(--border); position: relative; margin-bottom: 22px; flex-shrink: 0; }
+.wf-conn::after { content: ''; position: absolute; right: -3px; top: -3px; width: 7px; height: 7px; border-radius: 50%; background: var(--border); }
+.wf-conn.on { background: var(--rainbow); background-size: 200% auto; animation: rainbowShift 3s linear infinite; }
+.wf-conn.on::after { background: #a55eea; }
+
+/* connections */
+.conn-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(172px, 1fr)); gap: 10px; margin-bottom: 28px; }
+.cc { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r-lg); padding: 16px; cursor: pointer; transition: all .2s; text-align: center; }
+.cc:hover { border-color: var(--border-hi); background: var(--bg2h); transform: translateY(-2px); }
+.cc.connected { border-color: transparent; position: relative; }
+.cc.connected::before {
+  content: '';
+  position: absolute; inset: 0;
+  border-radius: var(--r-lg);
+  border: 1px solid transparent;
+  background: linear-gradient(var(--bg2), var(--bg2)) padding-box, var(--rainbow) border-box;
+  background-size: auto, 200% auto;
+  animation: rainbowShift 8s linear infinite;
+  pointer-events: none;
+}
+.cc-ico { width: 40px; height: 40px; border-radius: 10px; background: var(--bg0); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; margin: 0 auto 10px; overflow: hidden; }
+.cc-ico img { width: 24px; height: 24px; object-fit: contain; }
+.cc-name { font-size: 12.5px; font-weight: 500; color: var(--text0); margin-bottom: 4px; }
+.cc-status { font-size: 11px; }
+.cc-status.ok { color: var(--s-ok); }
+.cc-status.none { color: var(--text2); }
+
+/* upload zone */
+.upload-zone { border: 1.5px dashed var(--border); border-radius: var(--r-lg); padding: 28px; text-align: center; cursor: pointer; transition: all .2s; margin-bottom: 24px; }
+.upload-zone:hover { border-color: rgba(255,255,255,.2); background: rgba(255,255,255,.02); }
+.upload-zone svg { width: 26px; height: 26px; color: var(--text2); margin-bottom: 8px; }
+.upload-zone p { font-size: 13px; color: var(--text1); }
+.upload-zone span { font-weight: 500; background: var(--rainbow); background-size: 200% auto; -webkit-background-clip: text; background-clip: text; color: transparent; animation: rainbowShift 6s linear infinite; }
+
+/* doc table */
+.doc-table { width: 100%; border-collapse: collapse; margin-bottom: 36px; }
+.doc-table th { font-size: 10px; font-weight: 600; letter-spacing: .09em; text-transform: uppercase; color: var(--text2); padding: 8px 14px; text-align: left; border-bottom: 1px solid var(--border); }
+.doc-table td { padding: 11px 14px; font-size: 12.5px; color: var(--text1); border-bottom: 1px solid rgba(255,255,255,.025); vertical-align: middle; }
+.doc-table tr:hover td { background: var(--bg2); }
+.doc-name { color: var(--text0) !important; font-weight: 500; display: flex; align-items: center; gap: 9px; }
+.doc-type-ico { width: 28px; height: 28px; border-radius: 6px; background: var(--bg0); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.doc-type-ico svg { width: 13px; height: 13px; }
+.mono { font-family: 'DM Mono', monospace; font-size: 11.5px; }
+
+/* status badges */
+.sbadge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 8px; border-radius: 20px; font-size: 11px; font-weight: 500; }
+.sbadge.ok { background: var(--s-ok-bg); color: var(--s-ok); }
+.sbadge.err { background: var(--s-err-bg); color: var(--s-err); }
+.sbadge.run { background: var(--s-warn-bg); color: var(--s-warn); }
+.sbadge.idx { background: var(--s-warn-bg); color: var(--s-warn); }
+.sdot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+
+/* KB cards */
+.kb-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+.kb-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r-lg); padding: 16px; cursor: pointer; transition: all .2s; position: relative; overflow: hidden; }
+.kb-card:hover { border-color: var(--border-hi); background: var(--bg2h); }
+.kb-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1.5px; background: var(--rainbow); background-size: 200% auto; animation: rainbowShift 6s linear infinite; opacity: 0; transition: opacity .3s; }
+.kb-card:hover::before { opacity: 1; }
+.kb-card-head { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.kb-ico { width: 36px; height: 36px; border-radius: 9px; background: var(--bg0); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.kb-ico svg { width: 17px; height: 17px; }
+.kb-name { font-size: 13px; font-weight: 500; color: var(--text0); line-height: 1.35; }
+.kb-engine { font-size: 10.5px; color: var(--text2); margin-top: 1px; }
+.kb-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1px; background: var(--border); border-radius: 8px; overflow: hidden; }
+.kb-stat { background: var(--bg0); padding: 9px 8px; text-align: center; }
+.kb-stat-val { font-size: 15px; font-weight: 600; color: var(--text0); font-family: 'DM Mono', monospace; }
+.kb-stat-key { font-size: 9.5px; color: var(--text2); margin-top: 1px; letter-spacing: .04em; }
+.kb-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border); }
+.kb-updated { font-size: 10.5px; color: var(--text2); }
+.kb-status { display: flex; align-items: center; gap: 5px; font-size: 10.5px; }
+.kb-status.ready { color: var(--s-ok); }
+.kb-status.idx { color: var(--s-warn); }
+.kb-status-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+.kb-status.idx .kb-status-dot { animation: blink 1.5s ease-in-out infinite; }
+
+/* history */
+.hist-table { width: 100%; border-collapse: collapse; }
+.hist-table th { font-size: 10px; font-weight: 600; letter-spacing: .09em; text-transform: uppercase; color: var(--text2); padding: 9px 14px; text-align: left; border-bottom: 1px solid var(--border); }
+.hist-table td { padding: 12px 14px; font-size: 12.5px; color: var(--text1); border-bottom: 1px solid rgba(255,255,255,.025); vertical-align: middle; }
+.hist-table tr:hover td { background: var(--bg2); }
+.hist-name { color: var(--text0) !important; font-weight: 500; }
+
+/* templates search */
+.tpl-search { position: relative; margin: 20px 0 22px; }
+.tpl-search input { width: 100%; background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r-md); padding: 11px 40px 11px 16px; font-size: 13.5px; color: var(--text0); outline: none; font-family: inherit; transition: border-color .2s; }
+.tpl-search input::placeholder { color: var(--text2); }
+.tpl-search input:focus { border-color: var(--border-hi); }
+.tpl-search svg { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; color: var(--text2); pointer-events: none; }
+
+.hdr-btn {
+  background: var(--rainbow); background-size: 200% auto;
+  animation: rainbowShift 6s linear infinite;
+  color: #fff; border: none; padding: 6px 15px; border-radius: var(--r-sm);
+  font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit;
+  transition: transform .2s, box-shadow .2s; text-shadow: 0 1px 3px rgba(0,0,0,.3);
+}
+.hdr-btn:hover { transform: translateY(-1px); box-shadow: 0 3px 14px rgba(100,80,200,.25); }
+
+::-webkit-scrollbar { width: 4px; } ::-webkit-scrollbar-track { background: transparent; } ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+/* ═══════════════════════════════════════════
+   NEW: Login Screen
+   ═══════════════════════════════════════════ */
+.login-screen {
+  position: fixed; inset: 0; z-index: 10000;
+  background: var(--bg0);
+  display: flex; align-items: center; justify-content: center;
+  flex-direction: column;
+}
+.login-screen.hidden { display: none; }
+.login-card {
+  background: var(--bg1); border: 1px solid var(--border);
+  border-radius: 18px; padding: 48px 44px; text-align: center;
+  max-width: 400px; width: 90%; position: relative;
+}
+.login-card::before {
+  content: '';
+  position: absolute; inset: -1px; border-radius: 18px; padding: 1px;
+  background: var(--rainbow); background-size: 200% auto;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+  animation: rainbowShift 6s linear infinite; pointer-events: none;
+}
+.login-logo { margin-bottom: 28px; }
+.login-title { font-size: 24px; font-weight: 600; letter-spacing: -.02em; margin-bottom: 8px; }
+.login-sub { font-size: 13px; color: var(--text1); margin-bottom: 32px; line-height: 1.6; }
+.login-btn {
+  width: 100%; padding: 12px 20px; border-radius: var(--r-md);
+  background: var(--bg2); border: 1px solid var(--border);
+  color: var(--text0); font-size: 14px; font-weight: 500;
+  cursor: pointer; font-family: inherit; transition: all .2s;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+}
+.login-btn:hover { border-color: var(--border-hi); background: var(--bg2h); transform: translateY(-1px); }
+.login-btn img { width: 20px; height: 20px; }
+
+/* ═══════════════════════════════════════════
+   NEW: Modal / Wizard
+   ═══════════════════════════════════════════ */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 6000;
+  background: rgba(0,0,0,0.7); backdrop-filter: blur(6px);
+  display: flex; align-items: center; justify-content: center;
+}
+.modal-overlay.hidden { display: none; }
+.modal {
+  background: var(--bg1); border: 1px solid var(--border);
+  border-radius: 18px; padding: 32px; max-width: 560px; width: 92%;
+  max-height: 85vh; overflow-y: auto; position: relative;
+}
+.modal::before {
+  content: ''; position: absolute; inset: -1px; border-radius: 18px; padding: 1px;
+  background: var(--rainbow); background-size: 200% auto;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+  animation: rainbowShift 6s linear infinite; pointer-events: none;
+}
+.modal-close {
+  position: absolute; top: 16px; right: 16px;
+  width: 28px; height: 28px; border-radius: 6px; border: 1px solid var(--border);
+  background: var(--bg2); cursor: pointer; display: flex; align-items: center; justify-content: center;
+  color: var(--text1); transition: all .2s; z-index: 1;
+}
+.modal-close:hover { border-color: var(--border-hi); color: var(--text0); }
+.modal-title { font-size: 18px; font-weight: 600; margin-bottom: 24px; }
+.wizard-steps {
+  display: flex; gap: 4px; margin-bottom: 28px;
+}
+.wizard-step {
+  flex: 1; height: 3px; border-radius: 2px; background: var(--border); transition: all .3s;
+}
+.wizard-step.active {
+  background: var(--rainbow); background-size: 200% auto; animation: rainbowShift 4s linear infinite;
+}
+.wizard-step.done { background: var(--s-ok); }
+.wizard-content { min-height: 160px; margin-bottom: 24px; }
+.wizard-nav { display: flex; gap: 10px; justify-content: flex-end; }
+
+/* Form fields */
+.form-group { margin-bottom: 18px; }
+.form-label { display: block; font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text2); margin-bottom: 6px; }
+.form-input {
+  width: 100%; background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--r-sm); padding: 10px 14px; font-size: 13px; color: var(--text0);
+  outline: none; font-family: inherit; transition: border-color .2s;
+}
+.form-input:focus { border-color: var(--border-hi); }
+.form-input::placeholder { color: var(--text2); }
+select.form-input { cursor: pointer; }
+
+/* ═══════════════════════════════════════════
+   NEW: Pricing
+   ═══════════════════════════════════════════ */
+.pricing-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 24px; }
+.pricing-card {
+  background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r-lg);
+  padding: 28px 24px; text-align: center; transition: all .25s; position: relative; overflow: hidden;
+}
+.pricing-card:hover { border-color: var(--border-hi); transform: translateY(-2px); }
+.pricing-card.featured { border-color: transparent; }
+.pricing-card.featured::before {
+  content: ''; position: absolute; inset: 0; border-radius: var(--r-lg);
+  border: 1px solid transparent;
+  background: linear-gradient(var(--bg2), var(--bg2)) padding-box, var(--rainbow) border-box;
+  background-size: auto, 200% auto; animation: rainbowShift 6s linear infinite; pointer-events: none;
+}
+.pricing-plan { font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--text2); margin-bottom: 12px; }
+.pricing-price { font-size: 32px; font-weight: 600; color: var(--text0); margin-bottom: 4px; font-family: 'DM Mono', monospace; }
+.pricing-period { font-size: 12px; color: var(--text2); margin-bottom: 20px; }
+.pricing-features { list-style: none; text-align: left; margin-bottom: 24px; }
+.pricing-features li { font-size: 12px; color: var(--text1); padding: 5px 0; display: flex; align-items: center; gap: 8px; }
+.pricing-features li::before { content: '✓'; color: var(--s-ok); font-weight: 600; font-size: 11px; }
+
+/* Connect button */
+.conn-btn {
+  margin-top: 8px; padding: 6px 14px; border-radius: var(--r-sm);
+  background: var(--bg0); border: 1px solid var(--border); color: var(--text0);
+  font-size: 11px; font-weight: 500; cursor: pointer; font-family: inherit; transition: all .2s;
+}
+.conn-btn:hover { border-color: var(--border-hi); background: var(--bg2); }
+
+/* Toast */
+.toast-container { position: fixed; top: 70px; right: 20px; z-index: 9000; display: flex; flex-direction: column; gap: 8px; }
+.toast {
+  background: var(--bg1); border: 1px solid var(--border); border-radius: var(--r-md);
+  padding: 12px 18px; font-size: 12.5px; color: var(--text0); min-width: 260px;
+  box-shadow: 0 8px 32px rgba(0,0,0,.6); animation: fadeUp .22s ease-out;
+  display: flex; align-items: center; gap: 10px;
+}
+.toast.success { border-left: 3px solid var(--s-ok); }
+.toast.error { border-left: 3px solid var(--s-err); }
+.toast.info { border-left: 3px solid #45aaf2; }
+
+/* Spinner */
+.spinner { width: 20px; height: 20px; border: 2px solid var(--border); border-top-color: var(--text0); border-radius: 50%; animation: spin .6s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.btn-p:disabled, .btn-s:disabled { opacity: .5; cursor: not-allowed; transform: none !important; }
+</style>
+</head>
+<body>
+
+<!-- ═══ LOGIN SCREEN ═══ -->
+<div class="login-screen" id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">
+      <svg width="48" height="48" viewBox="0 0 30 30" fill="none">
+        <defs>
+          <linearGradient id="rlg1" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#ff6b6b"/><stop offset="25%" stop-color="#ffd32a"/>
+            <stop offset="50%" stop-color="#26de81"/><stop offset="75%" stop-color="#45aaf2"/>
+            <stop offset="100%" stop-color="#a55eea"/>
+          </linearGradient>
+          <linearGradient id="rlg2" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#a55eea" stop-opacity=".4"/>
+            <stop offset="100%" stop-color="#45aaf2" stop-opacity=".1"/>
+          </linearGradient>
+        </defs>
+        <polygon points="15,1.8 27.8,8.5 27.8,21.5 15,28.2 2.2,21.5 2.2,8.5" stroke="url(#rlg1)" stroke-width="1.4" fill="none"/>
+        <polygon points="15,7 22,11 22,19 15,23 8,19 8,11" stroke="url(#rlg1)" stroke-width="0.8" fill="url(#rlg2)" opacity="0.6"/>
+        <circle cx="15" cy="15" r="2.5" fill="url(#rlg1)"/>
+      </svg>
+    </div>
+    <div class="login-title rainbow-text">MYRIAGON</div>
+    <div class="login-sub">AI ワークフロー自動化プラットフォーム<br>Googleアカウントでログインしてください</div>
+    <button class="login-btn" onclick="signInWithGoogle()">
+      <img src="https://www.google.com/s2/favicons?domain=google.com&sz=64" alt="G">
+      Googleアカウントでログイン
+    </button>
+  </div>
+</div>
+
+<!-- ═══ TOAST CONTAINER ═══ -->
+<div class="toast-container" id="toast-container"></div>
+
+<!-- ═══ WIZARD MODAL ═══ -->
+<div class="modal-overlay hidden" id="wizard-modal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeWizard()">✕</button>
+    <div class="modal-title" id="wizard-title">フローを作成</div>
+    <div class="wizard-steps">
+      <div class="wizard-step active" id="wstep-0"></div>
+      <div class="wizard-step" id="wstep-1"></div>
+      <div class="wizard-step" id="wstep-2"></div>
+    </div>
+    <div class="wizard-content" id="wizard-content"></div>
+    <div class="wizard-nav">
+      <button class="btn-s" id="wizard-prev" onclick="wizardPrev()" style="display:none">戻る</button>
+      <button class="btn-p" id="wizard-next" onclick="wizardNext()">次へ</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ PRICING MODAL ═══ -->
+<div class="modal-overlay hidden" id="pricing-modal">
+  <div class="modal" style="max-width:780px">
+    <button class="modal-close" onclick="closePricing()">✕</button>
+    <div class="modal-title">プランを選択</div>
+    <div class="pricing-grid">
+      <div class="pricing-card">
+        <div class="pricing-plan">Starter</div>
+        <div class="pricing-price">¥9,800</div>
+        <div class="pricing-period">/ 月</div>
+        <ul class="pricing-features">
+          <li>フロー 5 個まで</li>
+          <li>実行 1,000 回/月</li>
+          <li>接続 3 サービス</li>
+          <li>メールサポート</li>
+        </ul>
+        <button class="btn-p" style="width:100%" onclick="createCheckoutSession('starter')">選択する</button>
+      </div>
+      <div class="pricing-card featured">
+        <div class="pricing-plan rainbow-text">Growth</div>
+        <div class="pricing-price">¥29,800</div>
+        <div class="pricing-period">/ 月</div>
+        <ul class="pricing-features">
+          <li>フロー 無制限</li>
+          <li>実行 10,000 回/月</li>
+          <li>接続 無制限</li>
+          <li>優先サポート</li>
+          <li>カスタムテンプレート</li>
+        </ul>
+        <button class="btn-p" style="width:100%" onclick="createCheckoutSession('growth')">選択する</button>
+      </div>
+      <div class="pricing-card">
+        <div class="pricing-plan">Enterprise</div>
+        <div class="pricing-price" style="font-size:22px">要問い合わせ</div>
+        <div class="pricing-period">カスタム</div>
+        <ul class="pricing-features">
+          <li>全機能アクセス</li>
+          <li>実行 無制限</li>
+          <li>専用インフラ</li>
+          <li>SLA 保証</li>
+          <li>専任サポート</li>
+        </ul>
+        <button class="btn-s" style="width:100%" onclick="window.open('mailto:sales@myriagon.io')">お問い合わせ</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<nav>
+  <a class="nav-logo" href="#" onclick="showPage('dashboard');return false;">
+    <svg width="30" height="30" viewBox="0 0 30 30" fill="none">
+      <defs>
+        <linearGradient id="rg1" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%"   stop-color="#ff6b6b"/>
+          <stop offset="25%"  stop-color="#ffd32a"/>
+          <stop offset="50%"  stop-color="#26de81"/>
+          <stop offset="75%"  stop-color="#45aaf2"/>
+          <stop offset="100%" stop-color="#a55eea"/>
+        </linearGradient>
+        <linearGradient id="rg2" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%"   stop-color="#a55eea" stop-opacity=".4"/>
+          <stop offset="100%" stop-color="#45aaf2" stop-opacity=".1"/>
+        </linearGradient>
+      </defs>
+      <polygon points="15,1.8 27.8,8.5 27.8,21.5 15,28.2 2.2,21.5 2.2,8.5"
+        stroke="url(#rg1)" stroke-width="1.4" fill="none"/>
+      <polygon points="15,7 22,11 22,19 15,23 8,19 8,11"
+        stroke="url(#rg1)" stroke-width="0.8" fill="url(#rg2)" opacity="0.6"/>
+      <circle cx="15" cy="15" r="2.5" fill="url(#rg1)"/>
+    </svg>
+    <span class="logo-text rainbow-text">MYRIAGON</span>
+  </a>
+  <div class="nav-links">
+    <span class="nav-link active" onclick="showPage('dashboard')">ダッシュボード</span>
+    <span class="nav-link" onclick="showPage('connections')">接続管理</span>
+    <span class="nav-link" onclick="showPage('knowledge')">ナレッジ管理</span>
+    <span class="nav-link" onclick="showPage('templates')">テンプレート</span>
+    <span class="nav-link" onclick="showPage('history')">実行履歴</span>
+  </div>
+  <span class="nav-link" onclick="openPricing()" style="color:var(--text2);font-size:12px;">プラン</span>
+  <div class="nav-avatar" id="nav-avatar" onclick="handleAvatarClick()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+      <circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+    </svg>
+  </div>
+</nav>
+
+<div class="app">
+<aside id="sidebar">
+  <div class="sb-tabs">
+    <div class="sb-tab active" id="tab-flow" onclick="switchTab('flow')">MY FLOW</div>
+    <div class="sb-tab" id="tab-rag" onclick="switchTab('rag')">MY RAG</div>
+  </div>
+
+  <!-- FLOW -->
+  <div id="sidebar-flow">
+    <div id="sidebar-flow-list"></div>
+  </div>
+
+  <!-- RAG -->
+  <div id="sidebar-rag" style="display:none">
+    <div class="rc-section">ドキュメント</div>
+    <div id="sidebar-rag-docs"></div>
+    <div class="rc-section" style="margin-top:4px">ナレッジベース</div>
+    <div id="sidebar-rag-kbs"></div>
+  </div>
+
+  <div class="sb-bottom">
+    <div class="settings-link" onclick="openPricing()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      Settings
+    </div>
+  </div>
+</aside>
+
+<main>
+
+  <!-- DASHBOARD -->
+  <div class="page visible" id="page-dashboard">
+    <div class="ask-wrap">
+      <textarea class="ask-box" placeholder="フローについて質問する、または新しいフローを作成..."></textarea>
+      <div class="ask-rainbow-ring"></div>
+      <button class="ask-send">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
+          <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+        </svg>
+      </button>
+    </div>
+    <div class="sh">
+      <span class="sh-title">Recommended FLOW</span>
+      <div class="sh-line"></div>
+      <span class="sh-link" onclick="showPage('templates')">すべて見る →</span>
+    </div>
+    <div class="flow-grid" id="recommended-flows"></div>
+  </div>
+
+  <!-- TEMPLATE DETAIL -->
+  <div class="page" id="page-template-detail">
+    <a class="back-link" onclick="showPage('dashboard')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      テンプレート一覧に戻る
+    </a>
+    <div class="tpl-layout" id="template-detail-content">
+      <div>
+        <div class="tpl-tags" id="tpl-tags"></div>
+        <div class="tpl-title" id="tpl-title"></div>
+        <div class="tpl-btns">
+          <button class="btn-p" id="tpl-use-btn" onclick="openWizardForCurrent()">Use for free</button>
+          <button class="btn-s">Preview</button>
+        </div>
+        <div class="sec-head">概要</div>
+        <div class="tpl-desc" id="tpl-desc"></div>
+        <div class="sec-head" style="margin-bottom:9px">使用ノード</div>
+        <div class="nodes-list" id="tpl-nodes"></div>
+      </div>
+      <div>
+        <div class="wf-area">
+          <div class="wf-grid"></div>
+          <div class="wf" id="tpl-wf-preview"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONNECTIONS -->
+  <div class="page" id="page-connections">
+    <div class="sh"><h2>接続管理</h2><div class="sh-line"></div><button class="hdr-btn" onclick="showPage('connections')">+ 接続を追加</button></div>
+    <div class="sh" style="margin:20px 0 12px"><span class="sh-title">接続済み</span><div class="sh-line"></div></div>
+    <div class="conn-grid" id="connected-services"></div>
+    <div class="sh" style="margin-bottom:12px"><span class="sh-title">未接続</span><div class="sh-line"></div></div>
+    <div class="conn-grid" id="disconnected-services"></div>
+  </div>
+
+  <!-- KNOWLEDGE -->
+  <div class="page" id="page-knowledge">
+    <div class="sh"><h2>ナレッジ管理</h2><div class="sh-line"></div><button class="hdr-btn">+ 追加</button></div>
+    <div class="upload-zone" style="margin-top:20px">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      <p>ドキュメントをドラッグ＆ドロップ、または<span>クリックしてアップロード</span></p>
+    </div>
+    <div class="sh" style="margin-bottom:14px"><span class="sh-title">ドキュメント</span><div class="sh-line"></div><span id="doc-count" style="font-size:11px;color:var(--text2)">0 件</span></div>
+    <table class="doc-table">
+      <thead><tr><th>ファイル名</th><th>タイプ</th><th>チャンク数</th><th>サイズ</th><th>更新日</th><th>ステータス</th></tr></thead>
+      <tbody id="doc-table-body"></tbody>
+    </table>
+    <div class="sh" style="margin-bottom:16px"><span class="sh-title">ナレッジベース (Vector DB)</span><div class="sh-line"></div><button class="hdr-btn">+ 新規作成</button></div>
+    <div class="kb-grid" id="kb-grid"></div>
+  </div>
+
+  <!-- TEMPLATES -->
+  <div class="page" id="page-templates">
+    <div class="sh"><h2>テンプレート</h2><div class="sh-line"></div></div>
+    <div class="tpl-search">
+      <input type="text" placeholder="テンプレートを検索..." id="tpl-search-input" oninput="filterTemplates()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    </div>
+    <div class="flow-grid" id="templates-grid"></div>
+  </div>
+
+  <!-- HISTORY -->
+  <div class="page" id="page-history">
+    <div class="sh"><h2>実行履歴</h2><div class="sh-line"></div></div>
+    <table class="hist-table" style="margin-top:20px">
+      <thead><tr><th>フロー名</th><th>実行日時</th><th>所要時間</th><th>ステータス</th><th>トリガー</th></tr></thead>
+      <tbody id="history-table-body"></tbody>
+    </table>
+  </div>
+
+</main>
+</div>
+
+<script>
+// ═══════════════════════════════════════════
+// Supabase Init
+// ═══════════════════════════════════════════
+const SUPABASE_URL = window.__SUPABASE_URL__ || '';
+const SUPABASE_ANON_KEY = window.__SUPABASE_ANON_KEY__ || '';
+const STRIPE_PK = window.__STRIPE_PK__ || '';
+let supabase = null;
+let currentUser = null;
+let currentTenantId = null;
+let allTemplates = [];
+let allWorkflows = [];
+let currentTemplateId = null;
+let wizardStep = 0;
+let wizardData = { templateId: null, services: [], parametersSchema: {}, parameters: {} };
+
+if (SUPABASE_URL && SUPABASE_ANON_KEY) {
+  supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  supabase.auth.onAuthStateChange((event, session) => {
+    if (session?.user) {
+      currentUser = session.user;
+      onLogin();
+    } else {
+      currentUser = null;
+      currentTenantId = null;
+      onLogout();
+    }
+  });
+}
+
+// ═══════════════════════════════════════════
+// Auth
+// ═══════════════════════════════════════════
+async function signInWithGoogle() {
+  if (!supabase) { showToast('Supabase未設定', 'error'); return; }
+  const { error } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.origin } });
+  if (error) showToast(error.message, 'error');
+}
+
+function signOut() {
+  if (supabase) supabase.auth.signOut();
+}
+
+function handleAvatarClick() {
+  if (currentUser) { if (confirm('ログアウトしますか？')) signOut(); }
+}
+
+function onLogin() {
+  document.getElementById('login-screen').classList.add('hidden');
+  const avatar = document.getElementById('nav-avatar');
+  if (currentUser.user_metadata?.avatar_url) {
+    avatar.innerHTML = '<img src="' + currentUser.user_metadata.avatar_url + '" alt="avatar">';
+  }
+  loadUserTenant();
+}
+
+function onLogout() {
+  document.getElementById('login-screen').classList.remove('hidden');
+  document.getElementById('nav-avatar').innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>';
+}
+
+async function loadUserTenant() {
+  if (!supabase || !currentUser) return;
+  const { data } = await supabase.from('users').select('tenant_id').eq('auth_uid', currentUser.id).single();
+  if (data) {
+    currentTenantId = data.tenant_id;
+    loadAll();
+  }
+}
+
+function loadAll() {
+  loadTemplates();
+  loadWorkflows();
+  loadCredentials();
+  loadExecutions();
+  subscribeRealtime();
+}
+
+// ═══════════════════════════════════════════
+// Templates
+// ═══════════════════════════════════════════
+const SVC_ICONS = {
+  google_sheets: 'sheets.google.com', gmail: 'gmail.com', slack: 'slack.com',
+  openai: 'openai.com', anthropic: 'anthropic.com', notion: 'notion.so',
+  supabase: 'supabase.com', hubspot: 'hubspot.com', stripe: 'stripe.com',
+  google_drive: 'drive.google.com', adobe: 'adobe.com',
+};
+function svcIcon(svc) {
+  const domain = SVC_ICONS[svc] || svc;
+  return 'https://www.google.com/s2/favicons?domain=' + domain + '&sz=64';
+}
+
+async function loadTemplates() {
+  if (!supabase) return;
+  const { data } = await supabase.from('templates').select('*').eq('status', 'active').order('created_at', { ascending: false });
+  allTemplates = data || [];
+  renderRecommended();
+  renderTemplatesGrid();
+}
+
+function renderRecommended() {
+  const el = document.getElementById('recommended-flows');
+  el.innerHTML = allTemplates.slice(0, 4).map(t => templateCard(t)).join('');
+}
+
+function renderTemplatesGrid() {
+  const el = document.getElementById('templates-grid');
+  const q = (document.getElementById('tpl-search-input')?.value || '').toLowerCase();
+  const filtered = q ? allTemplates.filter(t => t.title.toLowerCase().includes(q) || (t.description||'').toLowerCase().includes(q)) : allTemplates;
+  el.innerHTML = filtered.map(t => templateCard(t)).join('');
+}
+
+function filterTemplates() { renderTemplatesGrid(); }
+
+function templateCard(t) {
+  const icons = (t.services || []).map(s => '<div class="fg-icon"><img src="' + svcIcon(s) + '" alt="' + s + '"></div>').join('');
+  const badge = t.category ? '<span class="fg-badge">' + t.category + '</span>' : '';
+  return '<div class="fg-card" onclick="showTemplateDetail(\'' + t.id + '\')">' +
+    '<div class="fg-icons">' + icons + '</div>' +
+    '<div class="fg-title">' + t.title + '</div>' +
+    '<div class="fg-desc">' + (t.description || '') + '</div>' +
+    badge + '</div>';
+}
+
+function showTemplateDetail(id) {
+  currentTemplateId = id;
+  const t = allTemplates.find(x => x.id === id);
+  if (!t) return;
+  document.getElementById('tpl-tags').innerHTML = (t.services || []).map(s => '<span class="tag">' + s + '</span>').join('');
+  document.getElementById('tpl-title').textContent = t.title;
+  document.getElementById('tpl-desc').textContent = t.description || '';
+  const nodesEl = document.getElementById('tpl-nodes');
+  const wj = t.workflow_json || {};
+  const nodes = wj.nodes || [];
+  nodesEl.innerHTML = nodes.map(n =>
+    '<div class="ni"><div class="ni-ico"><img src="' + svcIcon(n.type || '') + '" alt=""></div>' +
+    '<span class="ni-name">' + (n.name || n.type) + '</span><span class="ni-type">' + (n.type || '') + '</span></div>'
+  ).join('') || '<div style="color:var(--text2);font-size:12px">ノード情報なし</div>';
+  showPage('template-detail');
+}
+
+// ═══════════════════════════════════════════
+// Workflows (Sidebar)
+// ═══════════════════════════════════════════
+async function loadWorkflows() {
+  if (!supabase) return;
+  const { data } = await supabase.from('workflows').select('*, templates(title, services, description)').order('created_at', { ascending: false });
+  allWorkflows = data || [];
+  renderSidebarFlows();
+}
+
+function renderSidebarFlows() {
+  const el = document.getElementById('sidebar-flow-list');
+  if (!allWorkflows.length) {
+    el.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text2);font-size:12px">フローがありません</div>';
+    return;
+  }
+  el.innerHTML = allWorkflows.map((w, i) => {
+    const t = w.templates || {};
+    const icons = (t.services || []).map(s => '<div class="svc-ico"><img src="' + svcIcon(s) + '" alt="' + s + '"></div>').join('');
+    const cls = w.status === 'inactive' ? 'fc inactive' : (i === 0 ? 'fc active' : 'fc');
+    return '<div class="' + cls + '" onclick="showTemplateDetail(\'' + (w.template_id || '') + '\')">' +
+      '<div class="fc-icons">' + icons + '<div class="ico-add">+</div></div>' +
+      '<div class="fc-title">' + (t.title || 'Untitled') + '</div>' +
+      '<div class="fc-desc">' + (t.description || '') + '</div></div>';
+  }).join('');
+}
+
+// ═══════════════════════════════════════════
+// Credentials (Connections page)
+// ═══════════════════════════════════════════
+const ALL_SERVICES = [
+  { name: 'google_sheets', label: 'Google Sheets', domain: 'sheets.google.com' },
+  { name: 'openai', label: 'OpenAI', domain: 'openai.com' },
+  { name: 'slack', label: 'Slack', domain: 'slack.com' },
+  { name: 'anthropic', label: 'Anthropic Claude', domain: 'anthropic.com' },
+  { name: 'gmail', label: 'Gmail', domain: 'gmail.com' },
+  { name: 'supabase', label: 'Supabase', domain: 'supabase.com' },
+  { name: 'google_drive', label: 'Google Drive', domain: 'drive.google.com' },
+  { name: 'notion', label: 'Notion', domain: 'notion.so' },
+  { name: 'hubspot', label: 'HubSpot', domain: 'hubspot.com' },
+  { name: 'stripe', label: 'Stripe', domain: 'stripe.com' },
+];
+let connectedCreds = [];
+
+async function loadCredentials() {
+  if (!supabase) return;
+  const { data } = await supabase.from('credentials').select('*').order('service_name');
+  connectedCreds = data || [];
+  renderConnections();
+}
+
+function renderConnections() {
+  const connected = connectedCreds.filter(c => c.status === 'connected');
+  const connNames = new Set(connected.map(c => c.service_name));
+  const connEl = document.getElementById('connected-services');
+  const discEl = document.getElementById('disconnected-services');
+  connEl.innerHTML = connected.map(c => {
+    const svc = ALL_SERVICES.find(s => s.name === c.service_name) || { label: c.service_name, domain: c.service_name };
+    return '<div class="cc connected"><div class="cc-ico"><img src="' + svcIcon(c.service_name) + '" alt=""></div>' +
+      '<div class="cc-name">' + svc.label + '</div><div class="cc-status ok">● 接続済み</div></div>';
+  }).join('') || '<div style="color:var(--text2);font-size:12px;padding:16px">接続済みサービスなし</div>';
+  discEl.innerHTML = ALL_SERVICES.filter(s => !connNames.has(s.name)).map(s =>
+    '<div class="cc" onclick="connectService(\'' + s.name + '\')">' +
+    '<div class="cc-ico"><img src="' + svcIcon(s.name) + '" alt=""></div>' +
+    '<div class="cc-name">' + s.label + '</div><div class="cc-status none">未接続</div>' +
+    '<button class="conn-btn">接続する</button></div>'
+  ).join('');
+}
+
+async function connectService(serviceName) {
+  showToast(serviceName + ' の接続を開始...', 'info');
+  if (!supabase) return;
+  try {
+    const { data, error } = await supabase.functions.invoke('credentials-create', {
+      body: { service_name: serviceName, credential_data: {} },
+    });
+    if (error) throw error;
+    showToast(serviceName + ' を接続しました', 'success');
+    loadCredentials();
+  } catch (e) {
+    showToast('接続エラー: ' + e.message, 'error');
+  }
+}
+
+// ═══════════════════════════════════════════
+// Executions (History page)
+// ═══════════════════════════════════════════
+async function loadExecutions() {
+  if (!supabase) return;
+  const { data } = await supabase.from('executions').select('*, workflows(templates(title, services))').order('started_at', { ascending: false }).limit(50);
+  renderHistory(data || []);
+}
+
+function renderHistory(execs) {
+  const tbody = document.getElementById('history-table-body');
+  if (!execs.length) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text2)">実行履歴なし</td></tr>';
+    return;
+  }
+  tbody.innerHTML = execs.map(e => {
+    const title = e.workflows?.templates?.title || 'Unknown';
+    const dt = e.started_at ? new Date(e.started_at).toLocaleString('ja-JP') : '—';
+    let duration = '—';
+    if (e.finished_at && e.started_at) {
+      const ms = new Date(e.finished_at) - new Date(e.started_at);
+      duration = (ms / 1000).toFixed(2) + 's';
+    }
+    const statusMap = { success: ['ok', '成功'], error: ['err', 'エラー'], running: ['run', '実行中'] };
+    const [cls, label] = statusMap[e.status] || ['', e.status];
+    return '<tr><td class="hist-name">' + title + '</td><td>' + dt + '</td>' +
+      '<td class="mono">' + duration + '</td>' +
+      '<td><span class="sbadge ' + cls + '"><span class="sdot"></span>' + label + '</span></td>' +
+      '<td>Webhook</td></tr>';
+  }).join('');
+}
+
+// ═══════════════════════════════════════════
+// Realtime
+// ═══════════════════════════════════════════
+function subscribeRealtime() {
+  if (!supabase) return;
+  supabase.channel('executions-realtime')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'executions' }, () => {
+      loadExecutions();
+    })
+    .subscribe();
+}
+
+// ═══════════════════════════════════════════
+// Wizard
+// ═══════════════════════════════════════════
+function openWizardForCurrent() {
+  if (!currentTemplateId) return;
+  openWizard(currentTemplateId);
+}
+
+function openWizard(templateId) {
+  const t = allTemplates.find(x => x.id === templateId);
+  if (!t) { showToast('テンプレートが見つかりません', 'error'); return; }
+  wizardData = { templateId, services: t.services || [], parametersSchema: t.parameters_schema || {}, parameters: {} };
+  wizardStep = 0;
+  document.getElementById('wizard-title').textContent = t.title;
+  document.getElementById('wizard-modal').classList.remove('hidden');
+  renderWizardStep();
+}
+
+function closeWizard() {
+  document.getElementById('wizard-modal').classList.add('hidden');
+}
+
+function renderWizardStep() {
+  [0,1,2].forEach(i => {
+    const el = document.getElementById('wstep-' + i);
+    el.className = 'wizard-step' + (i < wizardStep ? ' done' : '') + (i === wizardStep ? ' active' : '');
+  });
+  document.getElementById('wizard-prev').style.display = wizardStep > 0 ? '' : 'none';
+  const nextBtn = document.getElementById('wizard-next');
+  const content = document.getElementById('wizard-content');
+
+  if (wizardStep === 0) {
+    // Step 1: Connection check
+    nextBtn.textContent = '次へ';
+    const connNames = new Set(connectedCreds.filter(c => c.status === 'connected').map(c => c.service_name));
+    content.innerHTML = '<div class="sec-head" style="margin-bottom:14px">接続確認</div>' +
+      wizardData.services.map(s => {
+        const isConn = connNames.has(s);
+        const svc = ALL_SERVICES.find(x => x.name === s) || { label: s };
+        return '<div style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r-sm);margin-bottom:8px">' +
+          '<img src="' + svcIcon(s) + '" style="width:20px;height:20px">' +
+          '<span style="flex:1;font-size:13px">' + svc.label + '</span>' +
+          (isConn ? '<span class="sbadge ok"><span class="sdot"></span>接続済み</span>' :
+          '<button class="conn-btn" onclick="connectService(\'' + s + '\')">接続する</button>') + '</div>';
+      }).join('');
+  } else if (wizardStep === 1) {
+    // Step 2: Parameters form
+    nextBtn.textContent = '次へ';
+    const schema = wizardData.parametersSchema;
+    const props = schema.properties || schema;
+    const fields = Object.entries(props).map(([key, def]) => {
+      const label = def.label || def.title || key;
+      const type = def.type || 'string';
+      const ph = def.placeholder || def.description || '';
+      if (type === 'select' && def.options) {
+        const opts = def.options.map(o => '<option value="' + o + '">' + o + '</option>').join('');
+        return '<div class="form-group"><label class="form-label">' + label + '</label>' +
+          '<select class="form-input" data-key="' + key + '">' + opts + '</select></div>';
+      }
+      return '<div class="form-group"><label class="form-label">' + label + '</label>' +
+        '<input class="form-input" type="text" placeholder="' + ph + '" data-key="' + key + '" value="' + (wizardData.parameters[key] || '') + '"></div>';
+    }).join('');
+    content.innerHTML = '<div class="sec-head" style="margin-bottom:14px">設定</div>' +
+      (fields || '<div style="color:var(--text2);font-size:12px">設定項目はありません</div>');
+  } else if (wizardStep === 2) {
+    // Step 3: Confirm
+    nextBtn.textContent = 'フローを作成する';
+    const paramsList = Object.entries(wizardData.parameters).map(([k, v]) =>
+      '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px">' +
+      '<span style="color:var(--text2)">' + k + '</span><span>' + v + '</span></div>'
+    ).join('');
+    content.innerHTML = '<div class="sec-head" style="margin-bottom:14px">確認</div>' +
+      '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r-sm);padding:14px">' +
+      (paramsList || '<div style="color:var(--text2);font-size:12px">設定なし</div>') + '</div>';
+  }
+}
+
+function wizardPrev() {
+  if (wizardStep > 0) { wizardStep--; renderWizardStep(); }
+}
+
+async function wizardNext() {
+  if (wizardStep === 1) {
+    // Collect form values
+    document.querySelectorAll('#wizard-content [data-key]').forEach(el => {
+      wizardData.parameters[el.dataset.key] = el.value;
+    });
+  }
+  if (wizardStep < 2) {
+    wizardStep++;
+    renderWizardStep();
+  } else {
+    // Create workflow
+    const btn = document.getElementById('wizard-next');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner" style="display:inline-block;width:14px;height:14px;border-width:1.5px;margin-right:6px;vertical-align:middle"></span>作成中...';
+    try {
+      if (!supabase) throw new Error('Supabase未設定');
+      const { data, error } = await supabase.functions.invoke('workflows-create', {
+        body: { template_id: wizardData.templateId, parameters: wizardData.parameters },
+      });
+      if (error) throw error;
+      showToast('フローを作成しました', 'success');
+      closeWizard();
+      loadWorkflows();
+      showPage('dashboard');
+    } catch (e) {
+      showToast('作成エラー: ' + e.message, 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'フローを作成する';
+    }
+  }
+}
+
+// ═══════════════════════════════════════════
+// Stripe Pricing
+// ═══════════════════════════════════════════
+function openPricing() { document.getElementById('pricing-modal').classList.remove('hidden'); }
+function closePricing() { document.getElementById('pricing-modal').classList.add('hidden'); }
+
+async function createCheckoutSession(plan) {
+  if (!supabase) { showToast('Supabase未設定', 'error'); return; }
+  try {
+    const { data, error } = await supabase.functions.invoke('stripe-checkout', {
+      body: { plan, return_url: window.location.origin },
+    });
+    if (error) throw error;
+    if (data?.url) {
+      window.location.href = data.url;
+    }
+  } catch (e) {
+    showToast('決済エラー: ' + e.message, 'error');
+  }
+}
+
+// ═══════════════════════════════════════════
+// Page Navigation
+// ═══════════════════════════════════════════
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('visible'));
+  document.querySelectorAll('.nav-link').forEach(b => b.classList.remove('active'));
+  const el = document.getElementById('page-' + name);
+  if (el) el.classList.add('visible');
+  const map = {dashboard:0,connections:1,knowledge:2,templates:3,history:4,'template-detail':3};
+  const nl = document.querySelectorAll('.nav-link');
+  if (map[name] !== undefined && nl[map[name]]) nl[map[name]].classList.add('active');
+  document.querySelectorAll('.fc').forEach(c => c.classList.remove('active'));
+  if (name === 'template-detail' || name === 'dashboard') {
+    const f = document.querySelector('#sidebar-flow .fc');
+    if (f) f.classList.add('active');
+  }
+}
+
+function switchTab(tab) {
+  document.querySelectorAll('.sb-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  document.getElementById('sidebar-flow').style.display = tab === 'flow' ? 'block' : 'none';
+  document.getElementById('sidebar-rag').style.display  = tab === 'rag'  ? 'block' : 'none';
+}
+
+// ═══════════════════════════════════════════
+// Toast
+// ═══════════════════════════════════════════
+function showToast(message, type) {
+  type = type || 'info';
+  const container = document.getElementById('toast-container');
+  const toast = document.createElement('div');
+  toast.className = 'toast ' + type;
+  toast.textContent = message;
+  container.appendChild(toast);
+  setTimeout(() => { toast.style.opacity = '0'; toast.style.transition = 'opacity .3s'; setTimeout(() => toast.remove(), 300); }, 3500);
+}
+
+// ═══════════════════════════════════════════
+// Init: check if already logged in
+// ═══════════════════════════════════════════
+(async function init() {
+  if (!supabase) {
+    // No Supabase config — show login screen but allow demo browsing
+    document.getElementById('login-screen').classList.add('hidden');
+    return;
+  }
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session?.user) {
+    currentUser = session.user;
+    onLogin();
+  }
+})();
+</script>
+</body>
+</html>
