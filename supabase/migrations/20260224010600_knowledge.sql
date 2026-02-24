@@ -5,7 +5,7 @@ create type doc_status as enum ('uploading', 'processing', 'ready', 'error');
 create type kb_status  as enum ('building', 'ready', 'error');
 
 create table knowledge_documents (
-  id          uuid primary key default uuid_generate_v4(),
+  id          uuid primary key default gen_random_uuid(),
   tenant_id   uuid not null references tenants(id) on delete cascade,
   filename    text not null,
   file_type   text not null,
@@ -19,7 +19,7 @@ create table knowledge_documents (
 create index idx_knowledge_docs_tenant on knowledge_documents(tenant_id);
 
 create table knowledge_bases (
-  id          uuid primary key default uuid_generate_v4(),
+  id          uuid primary key default gen_random_uuid(),
   tenant_id   uuid not null references tenants(id) on delete cascade,
   name        text not null,
   engine      text not null default 'supabase_pgvector',

@@ -4,7 +4,7 @@
 create type template_status as enum ('active', 'maintenance', 'deprecated');
 
 create table templates (
-  id                uuid primary key default uuid_generate_v4(),
+  id                uuid primary key default gen_random_uuid(),
   title             text not null,
   description       text,
   category          text,

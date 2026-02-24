@@ -4,7 +4,7 @@
 create type workflow_status as enum ('active', 'inactive', 'error');
 
 create table workflows (
-  id              uuid primary key default uuid_generate_v4(),
+  id              uuid primary key default gen_random_uuid(),
   tenant_id       uuid not null references tenants(id) on delete cascade,
   template_id     uuid references templates(id) on delete set null,
   n8n_workflow_id text,

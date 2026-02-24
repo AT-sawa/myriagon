@@ -4,7 +4,7 @@
 create type execution_status as enum ('running', 'success', 'error');
 
 create table executions (
-  id          uuid primary key default uuid_generate_v4(),
+  id          uuid primary key default gen_random_uuid(),
   tenant_id   uuid not null references tenants(id) on delete cascade,
   workflow_id uuid not null references workflows(id) on delete cascade,
   status      execution_status not null default 'running',

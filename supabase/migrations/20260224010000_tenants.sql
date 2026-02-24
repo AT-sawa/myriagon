@@ -1,12 +1,10 @@
 -- 001_tenants.sql
 -- Tenant table for multi-tenant isolation
 
-create extension if not exists "uuid-ossp";
-
 create type plan_type as enum ('starter', 'growth', 'enterprise');
 
 create table tenants (
-  id            uuid primary key default uuid_generate_v4(),
+  id            uuid primary key default gen_random_uuid(),
   name          text not null,
   plan          plan_type not null default 'starter',
   stripe_customer_id     text,

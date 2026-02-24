@@ -4,7 +4,7 @@
 create type user_role as enum ('owner', 'admin', 'member');
 
 create table users (
-  id          uuid primary key default uuid_generate_v4(),
+  id          uuid primary key default gen_random_uuid(),
   tenant_id   uuid not null references tenants(id) on delete cascade,
   email       text not null,
   role        user_role not null default 'member',

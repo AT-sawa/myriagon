@@ -4,7 +4,7 @@
 create type credential_status as enum ('connected', 'disconnected');
 
 create table credentials (
-  id                uuid primary key default uuid_generate_v4(),
+  id                uuid primary key default gen_random_uuid(),
   tenant_id         uuid not null references tenants(id) on delete cascade,
   service_name      text not null,
   n8n_credential_id text,
