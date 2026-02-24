@@ -7,6 +7,7 @@ import {
   withRetry,
 } from "../_shared/common.ts";
 
+
 const SHEETS_API = "https://sheets.googleapis.com/v4/spreadsheets";
 
 async function getAccessToken(supabase: any, tenantId: string): Promise<string> {
