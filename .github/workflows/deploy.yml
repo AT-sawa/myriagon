@@ -34,7 +34,10 @@ jobs:
           supabase functions deploy credentials-create --no-verify-jwt=false
           supabase functions deploy executions-list --no-verify-jwt=false
           supabase functions deploy stripe-checkout --no-verify-jwt=false
+          supabase functions deploy stripe-webhook --no-verify-jwt
           supabase functions deploy health-monitor --no-verify-jwt
+          supabase functions deploy rag-ingest --no-verify-jwt=false
+          supabase functions deploy rag-query --no-verify-jwt=false
           supabase functions deploy mcp-google-sheets --no-verify-jwt=false
           supabase functions deploy mcp-gmail --no-verify-jwt=false
           supabase functions deploy mcp-slack --no-verify-jwt=false
