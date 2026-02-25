@@ -1166,7 +1166,7 @@ select.form-input { cursor: pointer; }
   </div>
 </div>
 
-<nav>
+<nav style="display:none">
   <a class="nav-logo" href="#" onclick="showPage('dashboard');return false;">
     <svg width="30" height="30" viewBox="0 0 30 30" fill="none">
       <defs>
@@ -1205,7 +1205,7 @@ select.form-input { cursor: pointer; }
   </div>
 </nav>
 
-<div class="app">
+<div class="app" style="display:none">
 <aside id="sidebar">
   <div class="sb-tabs">
     <div class="sb-tab active" id="tab-flow" onclick="switchTab('flow')">MY FLOW</div>
@@ -1782,14 +1782,9 @@ function showToast(message, type) {
 // Init: check if already logged in
 // ═══════════════════════════════════════════
 (async function init() {
-  // Default: show LP, hide app chrome
-  document.querySelector('nav').style.display = 'none';
-  document.querySelector('.app').style.display = 'none';
-
-  if (!supabase) {
-    // No Supabase config — show LP
-    return;
-  }
+  // nav and .app are hidden via inline style="display:none" in HTML.
+  // onLogin() will show them when user authenticates.
+  if (!supabase) return;
   const { data: { session } } = await supabase.auth.getSession();
   if (session?.user) {
     currentUser = session.user;
