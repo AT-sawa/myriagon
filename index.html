@@ -1353,17 +1353,20 @@ select.form-input { cursor: pointer; }
 const SUPABASE_URL = window.__SUPABASE_URL__ || 'https://ytjwxfoybupcvmadrgks.supabase.co';
 const SUPABASE_ANON_KEY = window.__SUPABASE_ANON_KEY__ || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl0and4Zm95YnVwY3ZtYWRyZ2tzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE1MjY0MTAsImV4cCI6MjA4NzEwMjQxMH0.hUQJWzCQxUDtKgWdeNFDl6jkW3-PGI1I6EXgsndq-Dg';
 const STRIPE_PK = window.__STRIPE_PK__ || '';
-let supabase = null;
-let currentUser = null;
-let currentTenantId = null;
-let allTemplates = [];
-let allWorkflows = [];
-let currentTemplateId = null;
-let wizardStep = 0;
-let wizardData = { templateId: null, services: [], parametersSchema: {}, parameters: {} };
+// Note: CDN sets `var supabase` globally — do NOT redeclare with let/const.
+// Save library ref, then reuse the global for the client instance.
+const _supabaseLib = window.supabase;
+supabase = null;
+var currentUser = null;
+var currentTenantId = null;
+var allTemplates = [];
+var allWorkflows = [];
+var currentTemplateId = null;
+var wizardStep = 0;
+var wizardData = { templateId: null, services: [], parametersSchema: {}, parameters: {} };
 
 if (SUPABASE_URL && SUPABASE_ANON_KEY) {
-  supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  supabase = _supabaseLib.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   supabase.auth.onAuthStateChange((event, session) => {
     if (session?.user) {
       currentUser = session.user;
