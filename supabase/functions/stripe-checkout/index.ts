@@ -2,8 +2,9 @@ import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import Stripe from "https://esm.sh/stripe@14?target=deno";
 
+const ALLOWED_ORIGIN = Deno.env.get("FRONTEND_URL") || "https://myriagon.app";
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Origin": ALLOWED_ORIGIN,
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
@@ -47,6 +48,20 @@ serve(async (req) => {
     }
 
     const { plan, return_url } = await req.json();
+
+    // Validate return_url against allowed origins
+    const ALLOWED_RETURN_ORIGINS = [
+      "https://myriagon.app",
+      "http://localhost:3000",
+      "http://127.0.0.1:3000",
+    ];
+    const parsedUrl = return_url ? new URL(return_url) : null;
+    if (!parsedUrl || !ALLOWED_RETURN_ORIGINS.includes(parsedUrl.origin)) {
+      return new Response(JSON.stringify({ error: "Invalid return_url" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     if (!PLAN_PRICES[plan]) {
       return new Response(JSON.stringify({ error: "Invalid plan" }), {

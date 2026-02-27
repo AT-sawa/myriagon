@@ -401,6 +401,24 @@ verify_jwt = true
 [functions.mcp-slack]
 verify_jwt = true
 
+[functions.oauth-initiate]
+verify_jwt = true
+
+[functions.oauth-callback]
+verify_jwt = false
+
+[functions.template-import]
+verify_jwt = true
+
+[functions.stripe-webhook]
+verify_jwt = false
+
+[functions.rag-ingest]
+verify_jwt = true
+
+[functions.rag-query]
+verify_jwt = true
+
 [analytics]
 enabled = true
 port = 54327

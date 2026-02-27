@@ -1,8 +1,9 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+const ALLOWED_ORIGIN = Deno.env.get("FRONTEND_URL") || "https://myriagon.app";
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Origin": ALLOWED_ORIGIN,
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
@@ -46,7 +47,7 @@ serve(async (req) => {
 
     const { data: executions, error, count } = await supabase
       .from("executions")
-      .select("*, workflows(template_id, templates(title, services))", { count: "exact" })
+      .select("*, workflows(template_id, n8n_workflow_id, templates(title, services))", { count: "exact" })
       .eq("tenant_id", userData.tenant_id)
       .order("started_at", { ascending: false })
       .range(offset, offset + limit - 1);

@@ -41,6 +41,9 @@ jobs:
           supabase functions deploy mcp-google-sheets --no-verify-jwt=false
           supabase functions deploy mcp-gmail --no-verify-jwt=false
           supabase functions deploy mcp-slack --no-verify-jwt=false
+          supabase functions deploy oauth-initiate --no-verify-jwt=false
+          supabase functions deploy oauth-callback --no-verify-jwt
+          supabase functions deploy template-import --no-verify-jwt=false
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
 
