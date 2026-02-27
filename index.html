@@ -1644,8 +1644,14 @@ let connectedCreds = [];
 
 async function loadCredentials() {
   if (!supabase) return;
-  const { data } = await supabase.from('credentials').select('*').order('service_name');
-  connectedCreds = data || [];
+  try {
+    const { data, error } = await supabase.from('credentials').select('*').order('service_name');
+    if (error) throw error;
+    connectedCreds = data || [];
+  } catch (e) {
+    console.error('loadCredentials error:', e);
+    connectedCreds = [];
+  }
   renderConnections();
 }
 
@@ -1684,7 +1690,6 @@ async function disconnectService(credentialId, label) {
 
 // ─── Service connection branching ───
 var GOOGLE_SERVICES = ['gmail', 'google_sheets', 'google_drive'];
-var OAUTH_SERVICES = ['gmail', 'google_sheets', 'google_drive', 'slack'];
 var PLATFORM_KEY_SERVICES = ['openai', 'anthropic'];
 
 async function connectService(serviceName) {
@@ -1701,6 +1706,15 @@ async function connectService(serviceName) {
 }
 
 async function connectWithPlatformKey(serviceName) {
+  // Find and disable the clicked button to prevent double-clicks
+  var btns = document.querySelectorAll('.conn-btn');
+  var clickedBtn = null;
+  btns.forEach(function(b) {
+    var card = b.closest('.cc');
+    if (card && card.textContent.includes(serviceName)) { clickedBtn = b; }
+  });
+  if (clickedBtn) { clickedBtn.disabled = true; clickedBtn.textContent = '接続中...'; }
+
   showToast(serviceName + ' を接続中...', 'info');
   try {
     var resp = await supabase.functions.invoke('credentials-create', {
@@ -1717,6 +1731,7 @@ async function connectWithPlatformKey(serviceName) {
     }
   } catch (e) {
     showToast('接続エラー: ' + e.message, 'error');
+    if (clickedBtn) { clickedBtn.disabled = false; clickedBtn.textContent = '接続する'; }
   }
 }
 
@@ -1735,26 +1750,39 @@ async function startOAuthFlow(provider) {
 
     var popup = window.open(data.auth_url, 'oauth_popup', 'width=600,height=700,scrollbars=yes');
 
+    if (!popup) {
+      showToast('ポップアップがブロックされました。ブラウザの設定を確認してください。', 'error');
+      return;
+    }
+
+    var pollTimer = null;
+    var callbackOrigin = new URL(SUPABASE_URL).origin;
+
+    function cleanup() {
+      window.removeEventListener('message', onMessage);
+      if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+    }
+
     function onMessage(event) {
+      if (event.origin !== callbackOrigin && event.origin !== window.location.origin) return;
       if (event.data && event.data.type === 'oauth-success') {
-        window.removeEventListener('message', onMessage);
+        cleanup();
         showToast(event.data.service + ' を接続しました', 'success');
         loadCredentials();
-        // Refresh wizard if open
         if (!document.getElementById('wizard-modal').classList.contains('hidden')) {
           renderWizardStep();
         }
       } else if (event.data && event.data.type === 'oauth-error') {
-        window.removeEventListener('message', onMessage);
+        cleanup();
         showToast('接続エラー: ' + event.data.message, 'error');
       }
     }
     window.addEventListener('message', onMessage);
 
     // Fallback: poll for popup close
-    var pollTimer = setInterval(function() {
-      if (popup && popup.closed) {
-        clearInterval(pollTimer);
+    pollTimer = setInterval(function() {
+      if (popup.closed) {
+        cleanup();
         loadCredentials();
       }
     }, 1000);
