@@ -1453,11 +1453,26 @@ function onLogout() {
 
 async function loadUserTenant() {
   if (!supabase || !currentUser) return;
-  const { data } = await supabase.from('users').select('tenant_id').eq('auth_uid', currentUser.id).single();
-  if (data) {
-    currentTenantId = data.tenant_id;
-    loadAll();
+  try {
+    const { data, error } = await supabase.from('users').select('tenant_id').eq('auth_uid', currentUser.id).single();
+    if (data) {
+      currentTenantId = data.tenant_id;
+    } else {
+      // Auto-provision: user exists in auth but not in users table
+      // (e.g. signed up before auto-tenant trigger was deployed)
+      console.log('No user record found, auto-provisioning tenant...');
+      const { data: rpcData, error: rpcErr } = await supabase.rpc('provision_user_tenant');
+      if (rpcErr) {
+        console.error('Auto-provision failed:', rpcErr);
+      } else if (rpcData) {
+        currentTenantId = rpcData;
+      }
+    }
+  } catch (e) {
+    console.error('loadUserTenant error:', e);
   }
+  // Always load dashboard data (templates are public, others gated by tenant)
+  loadAll();
 }
 
 // ═══════════════════════════════════════════
