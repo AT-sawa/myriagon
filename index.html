@@ -1183,6 +1183,28 @@ select.form-input { cursor: pointer; }
   </div>
 </div>
 
+<!-- ═══ API KEY MODAL ═══ -->
+<div class="modal-overlay hidden" id="apikey-modal">
+  <div class="modal" style="max-width:480px">
+    <button class="modal-close" onclick="closeApiKeyModal()">✕</button>
+    <div class="modal-title" id="apikey-modal-title">APIキーを入力</div>
+    <div style="display:flex;flex-direction:column;gap:16px;">
+      <div>
+        <label style="display:block;font-size:13px;color:var(--text1);margin-bottom:8px;">APIキー</label>
+        <input type="password" id="apikey-input" placeholder="sk-..." autocomplete="off"
+          style="width:100%;padding:10px 14px;background:var(--bg0);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text0);font-family:'DM Mono',monospace;font-size:14px;outline:none;transition:border-color .2s;"
+          onfocus="this.style.borderColor='var(--border-hi)'" onblur="this.style.borderColor='var(--border)'"
+          onkeydown="if(event.key==='Enter')submitApiKey()" />
+      </div>
+      <p id="apikey-help" style="font-size:12px;color:var(--text2);margin:0;"></p>
+      <div style="display:flex;gap:10px;justify-content:flex-end;">
+        <button class="btn-s" onclick="closeApiKeyModal()">キャンセル</button>
+        <button class="btn-p" id="apikey-submit" onclick="submitApiKey()">接続する</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <nav style="display:none">
   <a class="nav-logo" href="#" onclick="showPage('dashboard');return false;">
     <svg width="30" height="30" viewBox="0 0 30 30" fill="none">
@@ -1565,18 +1587,105 @@ function renderConnections() {
   ).join('');
 }
 
+// ─── Service connection branching ───
+var GOOGLE_SERVICES = ['gmail', 'google_sheets', 'google_drive'];
+var OAUTH_SERVICES = ['gmail', 'google_sheets', 'google_drive', 'slack'];
+
 async function connectService(serviceName) {
-  showToast(serviceName + ' の接続を開始...', 'info');
   if (!supabase) return;
+  if (GOOGLE_SERVICES.includes(serviceName)) {
+    startOAuthFlow('google');
+  } else if (serviceName === 'slack') {
+    startOAuthFlow('slack');
+  } else {
+    showApiKeyModal(serviceName);
+  }
+}
+
+async function startOAuthFlow(provider) {
+  showToast(provider + ' の認証を開始...', 'info');
   try {
-    const { data, error } = await supabase.functions.invoke('credentials-create', {
-      body: { service_name: serviceName, credential_data: {} },
+    var { data, error } = await supabase.functions.invoke('oauth-initiate', {
+      body: { service_name: provider },
     });
     if (error) throw error;
-    showToast(serviceName + ' を接続しました', 'success');
+    if (!data || !data.auth_url) throw new Error('auth_url not returned');
+
+    var popup = window.open(data.auth_url, 'oauth_popup', 'width=600,height=700,scrollbars=yes');
+
+    function onMessage(event) {
+      if (event.data && event.data.type === 'oauth-success') {
+        window.removeEventListener('message', onMessage);
+        showToast(event.data.service + ' を接続しました', 'success');
+        loadCredentials();
+        // Refresh wizard if open
+        if (!document.getElementById('wizard-modal').classList.contains('hidden')) {
+          renderWizardStep();
+        }
+      } else if (event.data && event.data.type === 'oauth-error') {
+        window.removeEventListener('message', onMessage);
+        showToast('接続エラー: ' + event.data.message, 'error');
+      }
+    }
+    window.addEventListener('message', onMessage);
+
+    // Fallback: poll for popup close
+    var pollTimer = setInterval(function() {
+      if (popup && popup.closed) {
+        clearInterval(pollTimer);
+        loadCredentials();
+      }
+    }, 1000);
+  } catch (e) {
+    showToast('認証エラー: ' + e.message, 'error');
+  }
+}
+
+// ─── API Key Modal ───
+var pendingApiKeyService = null;
+var API_KEY_HELP = {
+  openai: 'https://platform.openai.com/api-keys で取得',
+  anthropic: 'https://console.anthropic.com/settings/keys で取得',
+  notion: 'Notion My Integrations から Internal Token を取得',
+  hubspot: 'HubSpot Settings > Integrations > API Key',
+  stripe: 'Stripe Dashboard > Developers > API keys',
+  supabase: 'Supabase Dashboard > Project Settings > API',
+};
+
+function showApiKeyModal(serviceName) {
+  pendingApiKeyService = serviceName;
+  var svc = ALL_SERVICES.find(function(s) { return s.name === serviceName; }) || { label: serviceName };
+  document.getElementById('apikey-modal-title').textContent = svc.label + ' APIキーを入力';
+  document.getElementById('apikey-input').value = '';
+  document.getElementById('apikey-help').textContent = API_KEY_HELP[serviceName] || '';
+  document.getElementById('apikey-modal').classList.remove('hidden');
+}
+
+function closeApiKeyModal() {
+  document.getElementById('apikey-modal').classList.add('hidden');
+  pendingApiKeyService = null;
+}
+
+async function submitApiKey() {
+  var apiKey = document.getElementById('apikey-input').value.trim();
+  if (!apiKey) { showToast('APIキーを入力してください', 'error'); return; }
+  var btn = document.getElementById('apikey-submit');
+  btn.disabled = true; btn.textContent = '接続中...';
+  try {
+    var { data, error } = await supabase.functions.invoke('credentials-create', {
+      body: { service_name: pendingApiKeyService, api_key: apiKey },
+    });
+    if (error) throw error;
+    showToast(pendingApiKeyService + ' を接続しました', 'success');
+    closeApiKeyModal();
     loadCredentials();
+    if (!document.getElementById('wizard-modal').classList.contains('hidden')) {
+      renderWizardStep();
+    }
   } catch (e) {
     showToast('接続エラー: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = '接続する';
   }
 }
 

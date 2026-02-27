@@ -1,9 +1,27 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { N8N_CRED_TYPE_MAP, getN8nConfig } from "../_shared/n8n.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+// Map n8n node types to the service names in our credentials table
+const NODE_TYPE_TO_SERVICE: Record<string, string> = {
+  "n8n-nodes-base.gmail": "gmail",
+  "n8n-nodes-base.googleSheets": "google_sheets",
+  "n8n-nodes-base.googleDrive": "google_drive",
+  "n8n-nodes-base.slack": "slack",
+  "n8n-nodes-base.openAi": "openai",
+  "@n8n/n8n-nodes-langchain.lmChatOpenAi": "openai",
+  "@n8n/n8n-nodes-langchain.lmOpenAi": "openai",
+  "n8n-nodes-base.anthropic": "anthropic",
+  "@n8n/n8n-nodes-langchain.lmChatAnthropic": "anthropic",
+  "n8n-nodes-base.notion": "notion",
+  "n8n-nodes-base.hubspot": "hubspot",
+  "n8n-nodes-base.stripe": "stripe",
+  "n8n-nodes-base.supabase": "supabase",
 };
 
 serve(async (req) => {
@@ -69,11 +87,40 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
-    const { data: vaultData } = await serviceClient.rpc("vault_read", {
-      secret_name: "n8n_api_key",
+    const { apiKey: n8nApiKey, baseUrl: n8nBaseUrl } = await getN8nConfig();
+
+    // 3.5 Load tenant credentials and bind to workflow nodes
+    const { data: creds } = await serviceClient
+      .from("credentials")
+      .select("service_name, n8n_credential_id")
+      .eq("tenant_id", userData.tenant_id)
+      .eq("status", "connected");
+
+    const credMap: Record<string, string> = {};
+    for (const c of creds || []) {
+      if (c.n8n_credential_id) {
+        credMap[c.service_name] = c.n8n_credential_id;
+      }
+    }
+
+    // Inject n8n credentials into each node
+    const nodes = (workflowJson.nodes || []).map((node: Record<string, unknown>) => {
+      const nodeType = node.type as string;
+      const serviceName = NODE_TYPE_TO_SERVICE[nodeType];
+      if (serviceName && credMap[serviceName]) {
+        const n8nCredType = N8N_CRED_TYPE_MAP[serviceName];
+        if (n8nCredType) {
+          node.credentials = {
+            ...(node.credentials as Record<string, unknown> || {}),
+            [n8nCredType]: {
+              id: credMap[serviceName],
+              name: `tenant_${userData.tenant_id}_${serviceName}`,
+            },
+          };
+        }
+      }
+      return node;
     });
-    const n8nApiKey = vaultData?.[0]?.secret || Deno.env.get("N8N_API_KEY");
-    const n8nBaseUrl = Deno.env.get("N8N_BASE_URL") || "https://api.n8n.cloud/api/v1";
 
     // 4. Create workflow in n8n
     const n8nCreateRes = await fetch(`${n8nBaseUrl}/workflows`, {
@@ -84,7 +131,7 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         name: `${userData.tenant_id}_${template.title}`,
-        nodes: workflowJson.nodes || [],
+        nodes,
         connections: workflowJson.connections || {},
         settings: workflowJson.settings || {},
       }),

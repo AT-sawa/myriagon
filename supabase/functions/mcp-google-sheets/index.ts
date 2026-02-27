@@ -6,25 +6,9 @@ import {
   jsonResponse,
   withRetry,
 } from "../_shared/common.ts";
-
+import { getValidAccessToken } from "../_shared/token-refresh.ts";
 
 const SHEETS_API = "https://sheets.googleapis.com/v4/spreadsheets";
-
-async function getAccessToken(supabase: any, tenantId: string): Promise<string> {
-  const { data } = await supabase
-    .from("credentials")
-    .select("n8n_credential_id")
-    .eq("tenant_id", tenantId)
-    .eq("service_name", "google_sheets")
-    .eq("status", "connected")
-    .single();
-
-  if (!data) throw new Error("Google Sheets not connected");
-
-  // In production, exchange the stored refresh token for an access token
-  // via n8n credential proxy or direct OAuth token refresh
-  return data.n8n_credential_id;
-}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -35,7 +19,7 @@ serve(async (req) => {
     const ctx = await authenticate(req);
     const { tool, params } = await req.json();
 
-    const accessToken = await getAccessToken(ctx.supabase, ctx.tenantId);
+    const { accessToken } = await getValidAccessToken(ctx.tenantId, "google_sheets");
     const headers = {
       Authorization: `Bearer ${accessToken}`,
       "Content-Type": "application/json",

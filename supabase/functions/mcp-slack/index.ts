@@ -6,21 +6,9 @@ import {
   jsonResponse,
   withRetry,
 } from "../_shared/common.ts";
+import { getValidAccessToken } from "../_shared/token-refresh.ts";
 
 const SLACK_API = "https://slack.com/api";
-
-async function getBotToken(supabase: any, tenantId: string): Promise<string> {
-  const { data } = await supabase
-    .from("credentials")
-    .select("n8n_credential_id")
-    .eq("tenant_id", tenantId)
-    .eq("service_name", "slack")
-    .eq("status", "connected")
-    .single();
-
-  if (!data) throw new Error("Slack not connected");
-  return data.n8n_credential_id;
-}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -31,7 +19,7 @@ serve(async (req) => {
     const ctx = await authenticate(req);
     const { tool, params } = await req.json();
 
-    const token = await getBotToken(ctx.supabase, ctx.tenantId);
+    const { accessToken: token } = await getValidAccessToken(ctx.tenantId, "slack");
     const headers = {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",

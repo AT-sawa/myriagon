@@ -6,21 +6,9 @@ import {
   jsonResponse,
   withRetry,
 } from "../_shared/common.ts";
+import { getValidAccessToken } from "../_shared/token-refresh.ts";
 
 const GMAIL_API = "https://gmail.googleapis.com/gmail/v1/users/me";
-
-async function getAccessToken(supabase: any, tenantId: string): Promise<string> {
-  const { data } = await supabase
-    .from("credentials")
-    .select("n8n_credential_id")
-    .eq("tenant_id", tenantId)
-    .eq("service_name", "gmail")
-    .eq("status", "connected")
-    .single();
-
-  if (!data) throw new Error("Gmail not connected");
-  return data.n8n_credential_id;
-}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -31,7 +19,7 @@ serve(async (req) => {
     const ctx = await authenticate(req);
     const { tool, params } = await req.json();
 
-    const accessToken = await getAccessToken(ctx.supabase, ctx.tenantId);
+    const { accessToken } = await getValidAccessToken(ctx.tenantId, "gmail");
     const headers = {
       Authorization: `Bearer ${accessToken}`,
       "Content-Type": "application/json",
