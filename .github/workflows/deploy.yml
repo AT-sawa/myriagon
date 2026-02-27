@@ -27,23 +27,26 @@ jobs:
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
 
+      # JWT verification is handled inside each function via authenticate()
+      # which calls supabase.auth.getUser() – compatible with ES256 JWTs.
+      # Gateway-level verify_jwt is disabled to avoid ES256/HS256 mismatch.
       - name: Deploy Edge Functions
         run: |
-          supabase functions deploy workflows-create --no-verify-jwt=false
-          supabase functions deploy workflows-list --no-verify-jwt=false
-          supabase functions deploy credentials-create --no-verify-jwt=false
-          supabase functions deploy executions-list --no-verify-jwt=false
-          supabase functions deploy stripe-checkout --no-verify-jwt=false
+          supabase functions deploy workflows-create --no-verify-jwt
+          supabase functions deploy workflows-list --no-verify-jwt
+          supabase functions deploy credentials-create --no-verify-jwt
+          supabase functions deploy executions-list --no-verify-jwt
+          supabase functions deploy stripe-checkout --no-verify-jwt
           supabase functions deploy stripe-webhook --no-verify-jwt
           supabase functions deploy health-monitor --no-verify-jwt
-          supabase functions deploy rag-ingest --no-verify-jwt=false
-          supabase functions deploy rag-query --no-verify-jwt=false
-          supabase functions deploy mcp-google-sheets --no-verify-jwt=false
-          supabase functions deploy mcp-gmail --no-verify-jwt=false
-          supabase functions deploy mcp-slack --no-verify-jwt=false
-          supabase functions deploy oauth-initiate --no-verify-jwt=false
+          supabase functions deploy rag-ingest --no-verify-jwt
+          supabase functions deploy rag-query --no-verify-jwt
+          supabase functions deploy mcp-google-sheets --no-verify-jwt
+          supabase functions deploy mcp-gmail --no-verify-jwt
+          supabase functions deploy mcp-slack --no-verify-jwt
+          supabase functions deploy oauth-initiate --no-verify-jwt
           supabase functions deploy oauth-callback --no-verify-jwt
-          supabase functions deploy template-import --no-verify-jwt=false
+          supabase functions deploy template-import --no-verify-jwt
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
 
