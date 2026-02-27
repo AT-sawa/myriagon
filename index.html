@@ -1685,6 +1685,7 @@ async function disconnectService(credentialId, label) {
 // ─── Service connection branching ───
 var GOOGLE_SERVICES = ['gmail', 'google_sheets', 'google_drive'];
 var OAUTH_SERVICES = ['gmail', 'google_sheets', 'google_drive', 'slack'];
+var PLATFORM_KEY_SERVICES = ['openai', 'anthropic'];
 
 async function connectService(serviceName) {
   if (!supabase) return;
@@ -1692,18 +1693,44 @@ async function connectService(serviceName) {
     startOAuthFlow('google');
   } else if (serviceName === 'slack') {
     startOAuthFlow('slack');
+  } else if (PLATFORM_KEY_SERVICES.includes(serviceName)) {
+    connectWithPlatformKey(serviceName);
   } else {
     showApiKeyModal(serviceName);
+  }
+}
+
+async function connectWithPlatformKey(serviceName) {
+  showToast(serviceName + ' を接続中...', 'info');
+  try {
+    var resp = await supabase.functions.invoke('credentials-create', {
+      body: { service_name: serviceName, use_platform_key: true },
+    });
+    if (resp.error) {
+      var detail = resp.data?.error || resp.error.message || '不明なエラー';
+      throw new Error(detail);
+    }
+    showToast(serviceName + ' を接続しました', 'success');
+    loadCredentials();
+    if (!document.getElementById('wizard-modal').classList.contains('hidden')) {
+      renderWizardStep();
+    }
+  } catch (e) {
+    showToast('接続エラー: ' + e.message, 'error');
   }
 }
 
 async function startOAuthFlow(provider) {
   showToast(provider + ' の認証を開始...', 'info');
   try {
-    var { data, error } = await supabase.functions.invoke('oauth-initiate', {
+    var resp = await supabase.functions.invoke('oauth-initiate', {
       body: { service_name: provider },
     });
-    if (error) throw error;
+    if (resp.error) {
+      var detail = resp.data?.error || resp.error.message || '不明なエラー';
+      throw new Error(detail);
+    }
+    var data = resp.data;
     if (!data || !data.auth_url) throw new Error('auth_url not returned');
 
     var popup = window.open(data.auth_url, 'oauth_popup', 'width=600,height=700,scrollbars=yes');
@@ -1767,10 +1794,13 @@ async function submitApiKey() {
   var btn = document.getElementById('apikey-submit');
   btn.disabled = true; btn.textContent = '接続中...';
   try {
-    var { data, error } = await supabase.functions.invoke('credentials-create', {
+    var resp = await supabase.functions.invoke('credentials-create', {
       body: { service_name: pendingApiKeyService, api_key: apiKey },
     });
-    if (error) throw error;
+    if (resp.error) {
+      var detail = resp.data?.error || resp.error.message || '不明なエラー';
+      throw new Error(detail);
+    }
     showToast(pendingApiKeyService + ' を接続しました', 'success');
     closeApiKeyModal();
     loadCredentials();
@@ -1938,10 +1968,10 @@ async function wizardNext() {
     btn.innerHTML = '<span class="spinner" style="display:inline-block;width:14px;height:14px;border-width:1.5px;margin-right:6px;vertical-align:middle"></span>作成中...';
     try {
       if (!supabase) throw new Error('Supabase未設定');
-      const { data, error } = await supabase.functions.invoke('workflows-create', {
+      var wfResp = await supabase.functions.invoke('workflows-create', {
         body: { template_id: wizardData.templateId, parameters: wizardData.parameters },
       });
-      if (error) throw error;
+      if (wfResp.error) throw new Error(wfResp.data?.error || wfResp.error.message);
       showToast('フローを作成しました', 'success');
       closeWizard();
       loadWorkflows();

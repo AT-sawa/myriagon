@@ -12,7 +12,7 @@ serve(async (req) => {
   try {
     const ctx = await authenticate(req);
     const body = await req.json();
-    const { service_name, api_key } = body;
+    const { service_name, api_key, use_platform_key } = body;
 
     if (!service_name) {
       return jsonResponse({ error: "service_name is required" }, 400);
@@ -24,13 +24,32 @@ serve(async (req) => {
       return jsonResponse({ error: `Use oauth-initiate for ${service_name}` }, 400);
     }
 
-    // API key services require an api_key
-    if (!api_key || !api_key.trim()) {
-      return jsonResponse({ error: "api_key is required" }, 400);
+    // Resolve the actual API key
+    let resolvedKey: string;
+    if (use_platform_key) {
+      // Use the platform's pre-configured key
+      const PLATFORM_KEY_MAP: Record<string, string> = {
+        openai: "OPENAI_API_KEY",
+        anthropic: "ANTHROPIC_API_KEY",
+      };
+      const envName = PLATFORM_KEY_MAP[service_name];
+      if (!envName) {
+        return jsonResponse({ error: `Platform key not available for ${service_name}` }, 400);
+      }
+      const envKey = Deno.env.get(envName);
+      if (!envKey) {
+        return jsonResponse({ error: `${service_name} platform key not configured` }, 500);
+      }
+      resolvedKey = envKey;
+    } else {
+      if (!api_key || !api_key.trim()) {
+        return jsonResponse({ error: "api_key is required" }, 400);
+      }
+      resolvedKey = api_key.trim();
     }
 
     // Encrypt the API key
-    const tokens = { api_key: api_key.trim() };
+    const tokens = { api_key: resolvedKey };
     const { encrypted, iv } = await encryptTokens(tokens);
 
     // Create n8n credential
