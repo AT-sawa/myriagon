@@ -1402,10 +1402,32 @@ var wizardData = { templateId: null, services: [], parametersSchema: {}, paramet
 
 if (SUPABASE_URL && SUPABASE_ANON_KEY) {
   supabase = _supabaseLib.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-  supabase.auth.onAuthStateChange((event, session) => {
+  supabase.auth.onAuthStateChange(async (event, session) => {
     if (session?.user) {
       currentUser = session.user;
       onLogin();
+
+      // ─── Google OAuth Service Connection ─────
+      // If the user was connecting Google services (not just logging in),
+      // capture the provider_token and store it as a credential.
+      var pendingConnect = localStorage.getItem('pendingGoogleConnect');
+      if (pendingConnect && session.provider_token) {
+        localStorage.removeItem('pendingGoogleConnect');
+        try {
+          await invokeFunction('credentials-create', {
+            body: {
+              service_name: 'google',
+              provider_token: session.provider_token,
+              provider_refresh_token: session.provider_refresh_token || null,
+            },
+          });
+          showToast('Google (Gmail/Sheets/Drive) を接続しました', 'success');
+          loadCredentials();
+        } catch (e) {
+          console.error('Google credential save failed:', e);
+          showToast('Google接続の保存に失敗: ' + e.message, 'error');
+        }
+      }
     } else {
       currentUser = null;
       currentTenantId = null;
@@ -1413,33 +1435,6 @@ if (SUPABASE_URL && SUPABASE_ANON_KEY) {
     }
   });
 }
-
-// ─── OAuth Callback Handler ────────────────
-// When Google/Slack redirects to /oauth/callback?code=...&state=...,
-// this page loads in the popup. Detect the params and send to the opener.
-(function handleOAuthCallback() {
-  if (window.location.pathname === '/oauth/callback') {
-    var params = new URLSearchParams(window.location.search);
-    var code = params.get('code');
-    var state = params.get('state');
-    var error = params.get('error');
-
-    if (window.opener) {
-      if (error) {
-        window.opener.postMessage({ type: 'oauth-error', message: 'OAuth denied: ' + error }, window.location.origin);
-      } else if (code && state) {
-        window.opener.postMessage({ type: 'oauth-callback-code', code: code, state: state }, window.location.origin);
-      }
-      // Show a brief completion message and close
-      document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#070809;color:#e0e0e0;font-family:sans-serif"><div style="text-align:center;padding:40px;border:1px solid #333;border-radius:16px;background:#111"><div style="color:#26de81;font-size:48px">✓</div><h2>認証処理中...</h2><p>このウィンドウは自動的に閉じます。</p></div></div>';
-      setTimeout(function() { window.close(); }, 2000);
-    } else {
-      // Opened directly (not as popup) — redirect to main app
-      window.location.href = '/';
-    }
-    return; // Don't execute the rest of the app
-  }
-})();
 
 // ─── Edge Function invoke helper ─────────
 // supabase.functions.invoke() sets data=null on non-2xx and puts response in error.context.
@@ -1747,13 +1742,35 @@ var PLATFORM_KEY_SERVICES = ['openai', 'anthropic'];
 async function connectService(serviceName) {
   if (!supabase) return;
   if (GOOGLE_SERVICES.includes(serviceName)) {
-    startOAuthFlow('google');
-  } else if (serviceName === 'slack') {
-    startOAuthFlow('slack');
+    connectGoogleServices();
   } else if (PLATFORM_KEY_SERVICES.includes(serviceName)) {
     connectWithPlatformKey(serviceName);
   } else {
     showApiKeyModal(serviceName);
+  }
+}
+
+// ─── Google OAuth via Supabase Auth ───
+// Uses the existing Supabase Auth Google OAuth (already registered in
+// Google Cloud Console) with additional scopes for Gmail/Sheets/Drive.
+// No separate redirect URI registration needed.
+var GOOGLE_EXTRA_SCOPES = 'https://www.googleapis.com/auth/gmail.modify https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive';
+
+async function connectGoogleServices() {
+  showToast('Google認証を開始します...', 'info');
+  // Set flag so onAuthStateChange knows to save provider_token
+  localStorage.setItem('pendingGoogleConnect', '1');
+  var { error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: window.location.origin,
+      scopes: GOOGLE_EXTRA_SCOPES,
+      queryParams: { access_type: 'offline', prompt: 'consent' },
+    },
+  });
+  if (error) {
+    localStorage.removeItem('pendingGoogleConnect');
+    showToast('Google認証エラー: ' + error.message, 'error');
   }
 }
 
