@@ -377,47 +377,50 @@ deno_version = 2
 [functions.health-monitor]
 verify_jwt = false
 
+# JWT verification is handled inside each function via authenticate()
+# which calls supabase.auth.getUser() – compatible with ES256 JWTs.
+# Gateway-level verify_jwt is disabled to avoid ES256/HS256 mismatch.
 [functions.workflows-create]
-verify_jwt = true
+verify_jwt = false
 
 [functions.workflows-list]
-verify_jwt = true
+verify_jwt = false
 
 [functions.credentials-create]
-verify_jwt = true
+verify_jwt = false
 
 [functions.executions-list]
-verify_jwt = true
+verify_jwt = false
 
 [functions.stripe-checkout]
-verify_jwt = true
+verify_jwt = false
 
 [functions.mcp-google-sheets]
-verify_jwt = true
+verify_jwt = false
 
 [functions.mcp-gmail]
-verify_jwt = true
+verify_jwt = false
 
 [functions.mcp-slack]
-verify_jwt = true
+verify_jwt = false
 
 [functions.oauth-initiate]
-verify_jwt = true
+verify_jwt = false
 
 [functions.oauth-callback]
 verify_jwt = false
 
 [functions.template-import]
-verify_jwt = true
+verify_jwt = false
 
 [functions.stripe-webhook]
 verify_jwt = false
 
 [functions.rag-ingest]
-verify_jwt = true
+verify_jwt = false
 
 [functions.rag-query]
-verify_jwt = true
+verify_jwt = false
 
 [analytics]
 enabled = true

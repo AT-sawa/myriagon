@@ -1414,6 +1414,33 @@ if (SUPABASE_URL && SUPABASE_ANON_KEY) {
   });
 }
 
+// ─── Edge Function invoke helper ─────────
+// supabase.functions.invoke() sets data=null on non-2xx and puts response in error.context.
+// This helper extracts the real error message from the response body.
+async function invokeFunction(fnName, options) {
+  var resp = await supabase.functions.invoke(fnName, options);
+  if (resp.error) {
+    var detail = '';
+    // Try to read the error body from error.context (Response object)
+    if (resp.error.context && typeof resp.error.context.json === 'function') {
+      try {
+        var body = await resp.error.context.json();
+        detail = body.error || body.message || body.msg || '';
+      } catch (e) { /* ignore parse errors */ }
+    }
+    // Fallback: try resp.data (some CDN versions populate it)
+    if (!detail && resp.data) {
+      detail = resp.data.error || resp.data.message || '';
+    }
+    // Final fallback
+    if (!detail) {
+      detail = resp.error.message || '不明なエラー';
+    }
+    throw new Error(detail);
+  }
+  return resp.data;
+}
+
 // ═══════════════════════════════════════════
 // Auth
 // ═══════════════════════════════════════════
@@ -1597,9 +1624,7 @@ function previewWorkflow() {
 async function loadWorkflows() {
   if (!supabase) return;
   try {
-    const { data, error } = await supabase.functions.invoke('workflows-list');
-    if (error) throw error;
-    allWorkflows = data || [];
+    allWorkflows = await invokeFunction('workflows-list') || [];
   } catch (e) {
     // Fallback to direct query
     const { data } = await supabase.from('workflows').select('*, templates(title, services, description)').order('created_at', { ascending: false });
@@ -1717,13 +1742,9 @@ async function connectWithPlatformKey(serviceName) {
 
   showToast(serviceName + ' を接続中...', 'info');
   try {
-    var resp = await supabase.functions.invoke('credentials-create', {
+    await invokeFunction('credentials-create', {
       body: { service_name: serviceName, use_platform_key: true },
     });
-    if (resp.error) {
-      var detail = resp.data?.error || resp.error.message || '不明なエラー';
-      throw new Error(detail);
-    }
     showToast(serviceName + ' を接続しました', 'success');
     loadCredentials();
     if (!document.getElementById('wizard-modal').classList.contains('hidden')) {
@@ -1738,14 +1759,9 @@ async function connectWithPlatformKey(serviceName) {
 async function startOAuthFlow(provider) {
   showToast(provider + ' の認証を開始...', 'info');
   try {
-    var resp = await supabase.functions.invoke('oauth-initiate', {
+    var data = await invokeFunction('oauth-initiate', {
       body: { service_name: provider },
     });
-    if (resp.error) {
-      var detail = resp.data?.error || resp.error.message || '不明なエラー';
-      throw new Error(detail);
-    }
-    var data = resp.data;
     if (!data || !data.auth_url) throw new Error('auth_url not returned');
 
     var popup = window.open(data.auth_url, 'oauth_popup', 'width=600,height=700,scrollbars=yes');
@@ -1822,13 +1838,9 @@ async function submitApiKey() {
   var btn = document.getElementById('apikey-submit');
   btn.disabled = true; btn.textContent = '接続中...';
   try {
-    var resp = await supabase.functions.invoke('credentials-create', {
+    await invokeFunction('credentials-create', {
       body: { service_name: pendingApiKeyService, api_key: apiKey },
     });
-    if (resp.error) {
-      var detail = resp.data?.error || resp.error.message || '不明なエラー';
-      throw new Error(detail);
-    }
     showToast(pendingApiKeyService + ' を接続しました', 'success');
     closeApiKeyModal();
     loadCredentials();
@@ -1848,9 +1860,8 @@ async function submitApiKey() {
 async function loadExecutions() {
   if (!supabase) return;
   try {
-    const { data, error } = await supabase.functions.invoke('executions-list');
-    if (error) throw error;
-    renderHistory((data && data.data) || []);
+    var execData = await invokeFunction('executions-list');
+    renderHistory((execData && execData.data) || []);
   } catch (e) {
     // Fallback to direct query
     const { data } = await supabase.from('executions').select('*, workflows(templates(title, services))').order('started_at', { ascending: false }).limit(50);
@@ -1996,10 +2007,9 @@ async function wizardNext() {
     btn.innerHTML = '<span class="spinner" style="display:inline-block;width:14px;height:14px;border-width:1.5px;margin-right:6px;vertical-align:middle"></span>作成中...';
     try {
       if (!supabase) throw new Error('Supabase未設定');
-      var wfResp = await supabase.functions.invoke('workflows-create', {
+      await invokeFunction('workflows-create', {
         body: { template_id: wizardData.templateId, parameters: wizardData.parameters },
       });
-      if (wfResp.error) throw new Error(wfResp.data?.error || wfResp.error.message);
       showToast('フローを作成しました', 'success');
       closeWizard();
       loadWorkflows();
@@ -2034,14 +2044,13 @@ async function sendAskQuestion() {
   askAnswerEl.style.display = 'block';
   askAnswerEl.textContent = '回答を生成中...';
   try {
-    const { data, error } = await supabase.functions.invoke('rag-query', {
+    var ragData = await invokeFunction('rag-query', {
       body: { query, generate_answer: true, top_k: 5 },
     });
-    if (error) throw error;
-    if (data && data.answer) {
+    if (ragData && ragData.answer) {
       askAnswerEl.innerHTML = '<div style="font-weight:600;margin-bottom:8px;color:var(--text0)">AI回答</div>' +
-        '<div>' + escapeHtml(data.answer) + '</div>' +
-        (data.sources && data.sources.length ? '<div style="margin-top:10px;font-size:11px;color:var(--text2)">参照: ' + data.sources.length + ' 件の参照元</div>' : '');
+        '<div>' + escapeHtml(ragData.answer) + '</div>' +
+        (ragData.sources && ragData.sources.length ? '<div style="margin-top:10px;font-size:11px;color:var(--text2)">参照: ' + ragData.sources.length + ' 件の参照元</div>' : '');
     } else {
       askAnswerEl.textContent = 'ナレッジベースに関連情報が見つかりませんでした。ドキュメントをアップロードしてください。';
     }
@@ -2166,11 +2175,10 @@ async function handleDocUpload(files) {
     showToast(file.name + ' をアップロード中...', 'info');
     try {
       var text = await file.text();
-      var { data, error } = await supabase.functions.invoke('rag-ingest', {
+      var ingestResult = await invokeFunction('rag-ingest', {
         body: { content: text, filename: file.name, file_type: file.type || 'text/plain' },
       });
-      if (error) throw error;
-      showToast(file.name + ' をアップロードしました (' + (data.chunks_created || 0) + ' 件に分割)', 'success');
+      showToast(file.name + ' をアップロードしました (' + (ingestResult?.chunks_created || 0) + ' 件に分割)', 'success');
     } catch (e) {
       showToast(file.name + ' のアップロードに失敗: ' + e.message, 'error');
     }
@@ -2207,12 +2215,11 @@ function closePricing() { document.getElementById('pricing-modal').classList.add
 async function createCheckoutSession(plan) {
   if (!supabase) { showToast('Supabase未設定', 'error'); return; }
   try {
-    const { data, error } = await supabase.functions.invoke('stripe-checkout', {
+    var checkoutData = await invokeFunction('stripe-checkout', {
       body: { plan, return_url: window.location.origin },
     });
-    if (error) throw error;
-    if (data?.url) {
-      window.location.href = data.url;
+    if (checkoutData?.url) {
+      window.location.href = checkoutData.url;
     }
   } catch (e) {
     showToast('決済エラー: ' + e.message, 'error');
