@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MYRIAGON - AIワークフロー自動化プラットフォーム</title>
 <meta name="description" content="Gmail、Slack、Google Sheetsなど50以上のサービスをAIで繋いで業務を自動化。テンプレートを選ぶだけでノーコードでワークフローが完成します。">
-<meta name="keywords" content="AI,ワークフロー,自動化,ノーコード,業務効率化,n8n,Gmail,Slack,Google Sheets">
+<meta name="keywords" content="AI,ワークフロー,自動化,ノーコード,業務効率化,Gmail,Slack,Google Sheets">
 <meta name="author" content="Amorphous Inc.">
 <meta name="robots" content="index, follow">
 <!-- OGP -->
@@ -1259,8 +1259,8 @@ select.form-input { cursor: pointer; }
 <div class="app" style="display:none">
 <aside id="sidebar">
   <div class="sb-tabs">
-    <div class="sb-tab active" id="tab-flow" onclick="switchTab('flow')">MY FLOW</div>
-    <div class="sb-tab" id="tab-rag" onclick="switchTab('rag')">MY RAG</div>
+    <div class="sb-tab active" id="tab-flow" onclick="switchTab('flow')">マイフロー</div>
+    <div class="sb-tab" id="tab-rag" onclick="switchTab('rag')">マイRAG</div>
   </div>
 
   <!-- FLOW -->
@@ -1279,7 +1279,7 @@ select.form-input { cursor: pointer; }
   <div class="sb-bottom">
     <div class="settings-link" onclick="openPricing()">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-      Pricing &amp; Plans
+      料金プラン
     </div>
   </div>
 </aside>
@@ -1298,7 +1298,7 @@ select.form-input { cursor: pointer; }
       </button>
     </div>
     <div class="sh">
-      <span class="sh-title">Recommended FLOW</span>
+      <span class="sh-title">おすすめフロー</span>
       <div class="sh-line"></div>
       <span class="sh-link" onclick="showPage('templates')">すべて見る →</span>
     </div>
@@ -1316,12 +1316,12 @@ select.form-input { cursor: pointer; }
         <div class="tpl-tags" id="tpl-tags"></div>
         <div class="tpl-title" id="tpl-title"></div>
         <div class="tpl-btns">
-          <button class="btn-p" id="tpl-use-btn" onclick="openWizardForCurrent()">Use for free</button>
-          <button class="btn-s" onclick="previewWorkflow()">Preview</button>
+          <button class="btn-p" id="tpl-use-btn" onclick="openWizardForCurrent()">無料で使う</button>
+          <button class="btn-s" onclick="previewWorkflow()">プレビュー</button>
         </div>
         <div class="sec-head">概要</div>
         <div class="tpl-desc" id="tpl-desc"></div>
-        <div class="sec-head" style="margin-bottom:9px">使用ノード</div>
+        <div class="sec-head" style="margin-bottom:9px">フローステップ</div>
         <div class="nodes-list" id="tpl-nodes"></div>
       </div>
       <div>
@@ -1352,10 +1352,10 @@ select.form-input { cursor: pointer; }
     </div>
     <div class="sh" style="margin-bottom:14px"><span class="sh-title">ドキュメント</span><div class="sh-line"></div><span id="doc-count" style="font-size:11px;color:var(--text2)">0 件</span></div>
     <table class="doc-table">
-      <thead><tr><th>ファイル名</th><th>タイプ</th><th>チャンク数</th><th>サイズ</th><th>更新日</th><th>ステータス</th></tr></thead>
+      <thead><tr><th>ファイル名</th><th>タイプ</th><th>分割数</th><th>サイズ</th><th>更新日</th><th>ステータス</th></tr></thead>
       <tbody id="doc-table-body"></tbody>
     </table>
-    <div class="sh" style="margin-bottom:16px"><span class="sh-title">ナレッジベース (Vector DB)</span><div class="sh-line"></div><button class="hdr-btn" onclick="createKnowledgeBase()">+ 新規作成</button></div>
+    <div class="sh" style="margin-bottom:16px"><span class="sh-title">ナレッジベース</span><div class="sh-line"></div><button class="hdr-btn" onclick="createKnowledgeBase()">+ 新規作成</button></div>
     <div class="kb-grid" id="kb-grid"></div>
   </div>
 
@@ -1497,6 +1497,33 @@ function svcIcon(svc) {
   return 'https://www.google.com/s2/favicons?domain=' + domain + '&sz=64';
 }
 
+// Map n8n internal type to a user-friendly service key (for icons)
+const STEP_TYPE_MAP = {
+  'scheduleTrigger': 'schedule', 'hubspot': 'hubspot', 'filter': 'filter',
+  'slack': 'slack', 'googleSheets': 'google_sheets', 'if': 'condition',
+  'httpRequest': 'http', 'code': 'code', 'merge': 'merge', 'set': 'data',
+  'gmail': 'gmail', 'googleDrive': 'google_drive', 'openAi': 'openai',
+  'notion': 'notion', 'stripe': 'stripe', 'supabase': 'supabase',
+};
+const STEP_LABEL_MAP = {
+  'scheduleTrigger': 'スケジュール', 'hubspot': 'HubSpot', 'filter': 'フィルター',
+  'slack': 'Slack', 'googleSheets': 'Google Sheets', 'if': '条件分岐',
+  'httpRequest': 'HTTP連携', 'code': 'データ処理', 'merge': 'データ結合',
+  'set': 'データ設定', 'gmail': 'Gmail', 'googleDrive': 'Google Drive',
+  'openAi': 'OpenAI', 'notion': 'Notion', 'stripe': 'Stripe', 'supabase': 'Supabase',
+};
+function friendlyStepType(rawType) {
+  if (!rawType) return '';
+  // Extract short key: "n8n-nodes-base.slack" → "slack", "@n8n/n8n-nodes-langchain.openAi" → "openAi"
+  var key = rawType.split('.').pop() || rawType;
+  return STEP_TYPE_MAP[key] || key;
+}
+function friendlyStepLabel(rawType) {
+  if (!rawType) return 'ステップ';
+  var key = rawType.split('.').pop() || rawType;
+  return STEP_LABEL_MAP[key] || key.replace(/([A-Z])/g, ' $1').trim();
+}
+
 async function loadTemplates() {
   if (!supabase) return;
   const { data } = await supabase.from('templates').select('*').eq('status', 'active').order('created_at', { ascending: false });
@@ -1540,9 +1567,9 @@ function showTemplateDetail(id) {
   const wj = t.workflow_json || {};
   const nodes = wj.nodes || [];
   nodesEl.innerHTML = nodes.map(n =>
-    '<div class="ni"><div class="ni-ico"><img src="' + svcIcon(n.type || '') + '" alt=""></div>' +
-    '<span class="ni-name">' + escapeHtml(n.name || n.type) + '</span><span class="ni-type">' + escapeHtml(n.type || '') + '</span></div>'
-  ).join('') || '<div style="color:var(--text2);font-size:12px">ノード情報なし</div>';
+    '<div class="ni"><div class="ni-ico"><img src="' + svcIcon(friendlyStepType(n.type)) + '" alt=""></div>' +
+    '<span class="ni-name">' + escapeHtml(n.name || friendlyStepLabel(n.type)) + '</span><span class="ni-type">' + escapeHtml(friendlyStepLabel(n.type)) + '</span></div>'
+  ).join('') || '<div style="color:var(--text2);font-size:12px">フロー情報なし</div>';
   showPage('template-detail');
 }
 
@@ -1554,12 +1581,12 @@ function previewWorkflow() {
   const nodes = wf.nodes || [];
   const previewEl = document.getElementById('tpl-wf-preview');
   previewEl.innerHTML = nodes.map(n => {
-    const name = escapeHtml(n.name || n.type || 'Node');
-    const type = escapeHtml(n.type || '');
+    const name = escapeHtml(n.name || friendlyStepLabel(n.type));
+    const label = escapeHtml(friendlyStepLabel(n.type));
     return '<div style="display:inline-flex;align-items:center;gap:8px;padding:8px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r-sm);margin:4px;font-size:12px">' +
-      '<img src="' + svcIcon(n.type || '') + '" style="width:18px;height:18px">' +
+      '<img src="' + svcIcon(friendlyStepType(n.type)) + '" style="width:18px;height:18px">' +
       '<div><div style="font-weight:500;color:var(--text0)">' + name + '</div>' +
-      '<div style="color:var(--text2);font-size:10px">' + type + '</div></div></div>';
+      '<div style="color:var(--text2);font-size:10px">' + label + '</div></div></div>';
   }).join('<span style="color:var(--text2);margin:0 2px">&#x2192;</span>');
   showToast('ワークフロープレビューを表示', 'info');
 }
@@ -1956,7 +1983,7 @@ async function sendAskQuestion() {
     if (data && data.answer) {
       askAnswerEl.innerHTML = '<div style="font-weight:600;margin-bottom:8px;color:var(--text0)">AI回答</div>' +
         '<div>' + escapeHtml(data.answer) + '</div>' +
-        (data.sources && data.sources.length ? '<div style="margin-top:10px;font-size:11px;color:var(--text2)">参照: ' + data.sources.length + ' チャンク</div>' : '');
+        (data.sources && data.sources.length ? '<div style="margin-top:10px;font-size:11px;color:var(--text2)">参照: ' + data.sources.length + ' 件の参照元</div>' : '');
     } else {
       askAnswerEl.textContent = 'ナレッジベースに関連情報が見つかりませんでした。ドキュメントをアップロードしてください。';
     }
@@ -2030,8 +2057,8 @@ function renderKnowledgeBases() {
       '<div style="font-weight:600;font-size:14px;margin-bottom:6px">' + escapeHtml(kb.name || 'Untitled') + '</div>' +
       '<div style="font-size:11px;color:var(--text2);margin-bottom:8px">' + escapeHtml(kb.description || '') + '</div>' +
       '<div style="display:flex;gap:16px;font-size:11px;color:var(--text2)">' +
-      '<span>' + (kb.doc_count || 0) + ' docs</span>' +
-      '<span>' + (kb.vector_count || 0) + ' vectors</span>' +
+      '<span>' + (kb.doc_count || 0) + ' ファイル</span>' +
+      '<span>' + (kb.vector_count || 0) + ' 件登録済</span>' +
       '<span class="sbadge ' + cls + '"><span class="sdot"></span>' + label + '</span></div></div>';
   }).join('');
 }
@@ -2085,7 +2112,7 @@ async function handleDocUpload(files) {
         body: { content: text, filename: file.name, file_type: file.type || 'text/plain' },
       });
       if (error) throw error;
-      showToast(file.name + ' をアップロードしました (' + (data.chunks_created || 0) + ' チャンク)', 'success');
+      showToast(file.name + ' をアップロードしました (' + (data.chunks_created || 0) + ' 件に分割)', 'success');
     } catch (e) {
       showToast(file.name + ' のアップロードに失敗: ' + e.message, 'error');
     }
