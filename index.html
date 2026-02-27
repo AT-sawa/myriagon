@@ -1414,6 +1414,33 @@ if (SUPABASE_URL && SUPABASE_ANON_KEY) {
   });
 }
 
+// ─── OAuth Callback Handler ────────────────
+// When Google/Slack redirects to /oauth/callback?code=...&state=...,
+// this page loads in the popup. Detect the params and send to the opener.
+(function handleOAuthCallback() {
+  if (window.location.pathname === '/oauth/callback') {
+    var params = new URLSearchParams(window.location.search);
+    var code = params.get('code');
+    var state = params.get('state');
+    var error = params.get('error');
+
+    if (window.opener) {
+      if (error) {
+        window.opener.postMessage({ type: 'oauth-error', message: 'OAuth denied: ' + error }, window.location.origin);
+      } else if (code && state) {
+        window.opener.postMessage({ type: 'oauth-callback-code', code: code, state: state }, window.location.origin);
+      }
+      // Show a brief completion message and close
+      document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#070809;color:#e0e0e0;font-family:sans-serif"><div style="text-align:center;padding:40px;border:1px solid #333;border-radius:16px;background:#111"><div style="color:#26de81;font-size:48px">✓</div><h2>認証処理中...</h2><p>このウィンドウは自動的に閉じます。</p></div></div>';
+      setTimeout(function() { window.close(); }, 2000);
+    } else {
+      // Opened directly (not as popup) — redirect to main app
+      window.location.href = '/';
+    }
+    return; // Don't execute the rest of the app
+  }
+})();
+
 // ─── Edge Function invoke helper ─────────
 // supabase.functions.invoke() sets data=null on non-2xx and puts response in error.context.
 // This helper extracts the real error message from the response body.
@@ -1772,7 +1799,6 @@ async function startOAuthFlow(provider) {
     }
 
     var pollTimer = null;
-    var callbackOrigin = new URL(SUPABASE_URL).origin;
 
     function cleanup() {
       window.removeEventListener('message', onMessage);
@@ -1780,8 +1806,12 @@ async function startOAuthFlow(provider) {
     }
 
     function onMessage(event) {
-      if (event.origin !== callbackOrigin && event.origin !== window.location.origin) return;
-      if (event.data && event.data.type === 'oauth-success') {
+      if (event.origin !== window.location.origin) return;
+      if (event.data && event.data.type === 'oauth-callback-code') {
+        cleanup();
+        // Exchange the code for tokens via Edge Function
+        exchangeOAuthCode(event.data.code, event.data.state, provider);
+      } else if (event.data && event.data.type === 'oauth-success') {
         cleanup();
         showToast(event.data.service + ' を接続しました', 'success');
         loadCredentials();
@@ -1795,15 +1825,36 @@ async function startOAuthFlow(provider) {
     }
     window.addEventListener('message', onMessage);
 
-    // Fallback: poll for popup close
+    // Poll for popup close (fallback)
     pollTimer = setInterval(function() {
       if (popup.closed) {
         cleanup();
-        loadCredentials();
+        setTimeout(function() { loadCredentials(); }, 500);
       }
     }, 1000);
   } catch (e) {
     showToast('認証エラー: ' + e.message, 'error');
+  }
+}
+
+async function exchangeOAuthCode(code, state, provider) {
+  showToast(provider + ' の認証を完了中...', 'info');
+  try {
+    var result = await invokeFunction('oauth-exchange', {
+      body: { code: code, state: state },
+    });
+    if (result && result.success) {
+      var svcName = result.service_name === 'google' ? 'Google (Gmail/Sheets/Drive)' : result.service_name;
+      showToast(svcName + ' を接続しました', 'success');
+      loadCredentials();
+      if (!document.getElementById('wizard-modal').classList.contains('hidden')) {
+        renderWizardStep();
+      }
+    } else {
+      throw new Error('接続に失敗しました');
+    }
+  } catch (e) {
+    showToast('接続エラー: ' + e.message, 'error');
   }
 }
 

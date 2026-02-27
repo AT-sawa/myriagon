@@ -410,6 +410,9 @@ verify_jwt = false
 [functions.oauth-callback]
 verify_jwt = false
 
+[functions.oauth-exchange]
+verify_jwt = false
+
 [functions.template-import]
 verify_jwt = false
 

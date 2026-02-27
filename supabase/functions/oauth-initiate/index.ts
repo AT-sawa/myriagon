@@ -34,7 +34,11 @@ serve(async (req) => {
       .map((b) => b.toString(16).padStart(2, "0"))
       .join("");
 
-    const callbackUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/oauth-callback`;
+    // Use frontend URL as callback so the redirect URI matches what's registered
+    // in Google Cloud Console. The frontend will capture code/state and call
+    // oauth-exchange to complete the token exchange.
+    const frontendUrl = Deno.env.get("FRONTEND_URL") || "https://myriagon.app";
+    const callbackUrl = `${frontendUrl}/oauth/callback`;
 
     let authUrl: string;
     let scopes: string[];
@@ -90,7 +94,7 @@ serve(async (req) => {
       return jsonResponse({ error: "Failed to create OAuth state: " + stateError.message }, 500);
     }
 
-    return jsonResponse({ auth_url: authUrl });
+    return jsonResponse({ auth_url: authUrl, callback_url: callbackUrl });
   } catch (err) {
     return errorResponse(err);
   }

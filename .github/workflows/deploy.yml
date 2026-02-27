@@ -46,6 +46,7 @@ jobs:
           supabase functions deploy mcp-slack --no-verify-jwt
           supabase functions deploy oauth-initiate --no-verify-jwt
           supabase functions deploy oauth-callback --no-verify-jwt
+          supabase functions deploy oauth-exchange --no-verify-jwt
           supabase functions deploy template-import --no-verify-jwt
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
