@@ -1045,6 +1045,18 @@ select.form-input { cursor: pointer; }
     </div>
   </section>
 
+  <!-- Workflow Templates Preview -->
+  <section class="lp-section lp-section-border" id="lp-templates">
+    <div class="lp-section-inner">
+      <div class="lp-section-title">人気のワークフローテンプレート</div>
+      <div class="lp-section-sub">テンプレートを選んですぐに始められます。カスタマイズも自由自在。</div>
+      <div class="flow-grid" id="lp-templates-grid" style="margin-top:40px"></div>
+      <div style="text-align:center;margin-top:24px">
+        <button class="lp-cta-primary" onclick="signInWithGoogle()" style="font-size:14px;padding:12px 32px">無料で始める →</button>
+      </div>
+    </div>
+  </section>
+
   <!-- Pricing -->
   <section class="lp-section lp-section-border" id="lp-pricing">
     <div class="lp-section-inner">
@@ -2152,12 +2164,38 @@ function showToast(message, type) {
   // nav and .app are hidden via inline style="display:none" in HTML.
   // onLogin() will show them when user authenticates.
   if (!supabase) return;
+
+  // Load templates for landing page (visible before login)
+  loadLandingTemplates();
+
   const { data: { session } } = await supabase.auth.getSession();
   if (session?.user) {
     currentUser = session.user;
     onLogin();
   }
 })();
+
+async function loadLandingTemplates() {
+  if (!supabase) return;
+  try {
+    const { data } = await supabase.from('templates').select('id,title,description,services,category').eq('status', 'active').order('created_at', { ascending: false });
+    const grid = document.getElementById('lp-templates-grid');
+    if (!grid || !data || !data.length) return;
+    grid.innerHTML = data.map(function(t) {
+      var icons = (t.services || []).map(function(s) {
+        return '<div class="fg-icon"><img src="' + svcIcon(s) + '" alt="' + escapeHtml(s) + '"></div>';
+      }).join('');
+      var badge = t.category ? '<span class="fg-badge">' + escapeHtml(t.category) + '</span>' : '';
+      return '<div class="fg-card" onclick="signInWithGoogle()" style="cursor:pointer">' +
+        '<div class="fg-icons">' + icons + '</div>' +
+        '<div class="fg-title">' + escapeHtml(t.title) + '</div>' +
+        '<div class="fg-desc">' + escapeHtml(t.description || '') + '</div>' +
+        badge + '</div>';
+    }).join('');
+  } catch (e) {
+    // Silent fail on landing page
+  }
+}
 </script>
 </body>
 </html>
