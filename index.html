@@ -423,7 +423,7 @@ main { margin-left: var(--sw); flex: 1; padding: 32px 40px; min-height: calc(100
 .conn-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(172px, 1fr)); gap: 10px; margin-bottom: 28px; }
 .cc { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r-lg); padding: 16px; cursor: pointer; transition: all .2s; text-align: center; }
 .cc:hover { border-color: var(--border-hi); background: var(--bg2h); transform: translateY(-2px); }
-.cc.connected { border-color: transparent; position: relative; }
+.cc.connected { border-color: transparent; position: relative; z-index: 0; }
 .cc.connected::before {
   content: '';
   position: absolute; inset: 0;
@@ -433,6 +433,7 @@ main { margin-left: var(--sw); flex: 1; padding: 32px 40px; min-height: calc(100
   background-size: auto, 200% auto;
   animation: rainbowShift 8s linear infinite;
   pointer-events: none;
+  z-index: -1;
 }
 .cc-ico { width: 40px; height: 40px; border-radius: 10px; background: var(--bg0); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; margin: 0 auto 10px; overflow: hidden; }
 .cc-ico img { width: 24px; height: 24px; object-fit: contain; }
@@ -502,6 +503,10 @@ main { margin-left: var(--sw); flex: 1; padding: 32px 40px; min-height: calc(100
 .tpl-search input::placeholder { color: var(--text2); }
 .tpl-search input:focus { border-color: var(--border-hi); }
 .tpl-search svg { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; color: var(--text2); pointer-events: none; }
+.tpl-cats { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 18px; }
+.tpl-cat-btn { padding: 5px 14px; font-size: 12px; border-radius: 20px; border: 1px solid var(--border); background: var(--bg2); color: var(--text1); cursor: pointer; transition: all .2s; font-family: inherit; white-space: nowrap; }
+.tpl-cat-btn:hover { border-color: var(--border-hi); background: var(--bg2h); }
+.tpl-cat-btn.active { background: linear-gradient(135deg, rgba(168,85,247,.2), rgba(59,130,246,.2)); border-color: rgba(168,85,247,.5); color: #fff; }
 
 .hdr-btn {
   background: var(--rainbow); background-size: 200% auto;
@@ -1361,11 +1366,12 @@ select.form-input { cursor: pointer; }
 
   <!-- TEMPLATES -->
   <div class="page" id="page-templates">
-    <div class="sh"><h2>テンプレート</h2><div class="sh-line"></div></div>
+    <div class="sh"><h2>テンプレート</h2><span id="tpl-count" style="color:var(--text2);font-size:13px;margin-left:12px"></span><div class="sh-line"></div></div>
     <div class="tpl-search">
       <input type="text" placeholder="テンプレートを検索..." id="tpl-search-input" oninput="filterTemplates()">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
     </div>
+    <div class="tpl-cats" id="tpl-category-tabs"></div>
     <div class="flow-grid" id="templates-grid"></div>
   </div>
 
@@ -1551,15 +1557,25 @@ const STEP_TYPE_MAP = {
   'scheduleTrigger': 'schedule', 'hubspot': 'hubspot', 'filter': 'filter',
   'slack': 'slack', 'googleSheets': 'google_sheets', 'if': 'condition',
   'httpRequest': 'http', 'code': 'code', 'merge': 'merge', 'set': 'data',
-  'gmail': 'gmail', 'googleDrive': 'google_drive', 'openAi': 'openai',
+  'gmail': 'gmail', 'gmailTrigger': 'gmail', 'googleDrive': 'google_drive',
+  'googleDriveTrigger': 'google_drive', 'openAi': 'openai',
+  'lmChatOpenAi': 'openai', 'agent': 'openai',
   'notion': 'notion', 'stripe': 'stripe', 'supabase': 'supabase',
+  'switch': 'condition', 'webhook': 'http', 'manualTrigger': 'schedule',
+  'limit': 'data', 'noOp': 'data', 'anthropic': 'anthropic',
+  'shopifyTrigger': 'stripe',
 };
 const STEP_LABEL_MAP = {
   'scheduleTrigger': 'スケジュール', 'hubspot': 'HubSpot', 'filter': 'フィルター',
   'slack': 'Slack', 'googleSheets': 'Google Sheets', 'if': '条件分岐',
   'httpRequest': 'HTTP連携', 'code': 'データ処理', 'merge': 'データ結合',
-  'set': 'データ設定', 'gmail': 'Gmail', 'googleDrive': 'Google Drive',
-  'openAi': 'OpenAI', 'notion': 'Notion', 'stripe': 'Stripe', 'supabase': 'Supabase',
+  'set': 'データ設定', 'gmail': 'Gmail', 'gmailTrigger': 'Gmail',
+  'googleDrive': 'Google Drive', 'googleDriveTrigger': 'Google Drive',
+  'openAi': 'OpenAI', 'lmChatOpenAi': 'OpenAI', 'agent': 'AIエージェント',
+  'notion': 'Notion', 'stripe': 'Stripe', 'supabase': 'Supabase',
+  'switch': '条件分岐', 'webhook': 'Webhook', 'manualTrigger': '手動実行',
+  'limit': 'リミット', 'noOp': 'スキップ', 'anthropic': 'Claude',
+  'shopifyTrigger': 'Shopify',
 };
 function friendlyStepType(rawType) {
   if (!rawType) return '';
@@ -1573,11 +1589,28 @@ function friendlyStepLabel(rawType) {
   return STEP_LABEL_MAP[key] || key.replace(/([A-Z])/g, ' $1').trim();
 }
 
+var selectedCategory = '';
+
 async function loadTemplates() {
   if (!supabase) return;
   const { data } = await supabase.from('templates').select('*').eq('status', 'active').order('created_at', { ascending: false });
   allTemplates = data || [];
+  renderCategoryTabs();
   renderRecommended();
+  renderTemplatesGrid();
+}
+
+function renderCategoryTabs() {
+  const cats = [...new Set(allTemplates.map(t => t.category).filter(Boolean))];
+  const el = document.getElementById('tpl-category-tabs');
+  if (!el) return;
+  el.innerHTML = '<button class="tpl-cat-btn' + (selectedCategory === '' ? ' active' : '') + '" onclick="selectCategory(\'\')" >すべて</button>' +
+    cats.map(c => '<button class="tpl-cat-btn' + (selectedCategory === c ? ' active' : '') + '" onclick="selectCategory(\'' + escapeHtml(c) + '\')">' + escapeHtml(c) + '</button>').join('');
+}
+
+function selectCategory(cat) {
+  selectedCategory = cat;
+  renderCategoryTabs();
   renderTemplatesGrid();
 }
 
@@ -1589,8 +1622,16 @@ function renderRecommended() {
 function renderTemplatesGrid() {
   const el = document.getElementById('templates-grid');
   const q = (document.getElementById('tpl-search-input')?.value || '').toLowerCase();
-  const filtered = q ? allTemplates.filter(t => t.title.toLowerCase().includes(q) || (t.description||'').toLowerCase().includes(q)) : allTemplates;
-  el.innerHTML = filtered.map(t => templateCard(t)).join('');
+  var filtered = allTemplates;
+  if (selectedCategory) {
+    filtered = filtered.filter(t => t.category === selectedCategory);
+  }
+  if (q) {
+    filtered = filtered.filter(t => t.title.toLowerCase().includes(q) || (t.description||'').toLowerCase().includes(q) || (t.category||'').toLowerCase().includes(q) || (t.services||[]).some(s => s.toLowerCase().includes(q)));
+  }
+  el.innerHTML = filtered.map(t => templateCard(t)).join('') || '<div style="color:var(--text2);font-size:13px;padding:40px;text-align:center">該当するテンプレートがありません</div>';
+  var countEl = document.getElementById('tpl-count');
+  if (countEl) countEl.textContent = filtered.length + ' / ' + allTemplates.length + ' テンプレート';
 }
 
 function filterTemplates() { renderTemplatesGrid(); }
@@ -2356,7 +2397,9 @@ async function loadLandingTemplates() {
     const { data } = await supabase.from('templates').select('id,title,description,services,category').eq('status', 'active').order('created_at', { ascending: false });
     const grid = document.getElementById('lp-templates-grid');
     if (!grid || !data || !data.length) return;
-    grid.innerHTML = data.map(function(t) {
+    var lpTitle = document.querySelector('#lp-templates .lp-section-title');
+    if (lpTitle) lpTitle.textContent = '人気のワークフローテンプレート (' + data.length + '本)';
+    grid.innerHTML = data.slice(0, 6).map(function(t) {
       var icons = (t.services || []).map(function(s) {
         return '<div class="fg-icon"><img src="' + svcIcon(s) + '" alt="' + escapeHtml(s) + '"></div>';
       }).join('');
