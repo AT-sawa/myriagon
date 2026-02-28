@@ -9,8 +9,8 @@ export const N8N_CRED_TYPE_MAP: Record<string, string> = {
   slack: "slackOAuth2Api",
   openai: "openAiApi",
   anthropic: "anthropicApi",
-  notion: "notionApi",
-  hubspot: "hubspotApi",
+  notion: "notionOAuth2Api",
+  hubspot: "hubspotOAuth2Api",
   stripe: "stripeApi",
   supabase: "supabaseApi",
 };
@@ -96,6 +96,24 @@ export function buildN8nCredData(
       accessToken: tokens.access_token,
     };
   }
-  // API key services
+  if (serviceName === "notion") {
+    return {
+      apiKey: tokens.access_token,
+    };
+  }
+  if (serviceName === "hubspot") {
+    return {
+      accessToken: tokens.access_token,
+      refreshToken: tokens.refresh_token,
+      clientId: Deno.env.get("HUBSPOT_CLIENT_ID") || "",
+      clientSecret: Deno.env.get("HUBSPOT_CLIENT_SECRET") || "",
+    };
+  }
+  if (serviceName === "stripe") {
+    return {
+      apiKey: tokens.access_token,
+    };
+  }
+  // API key services (fallback)
   return { apiKey: tokens.api_key };
 }

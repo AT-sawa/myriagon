@@ -10,6 +10,10 @@ const GOOGLE_SCOPES = [
 
 const SLACK_SCOPES = "chat:write,channels:read,channels:history,groups:read,groups:history";
 
+// Notion OAuth scopes (Notion uses a single "read content" scope implicitly)
+// HubSpot scopes for CRM
+const HUBSPOT_SCOPES = "crm.objects.contacts.write crm.objects.contacts.read crm.objects.deals.read crm.objects.deals.write";
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -75,6 +79,53 @@ serve(async (req) => {
         state: stateToken,
       });
       authUrl = `https://slack.com/oauth/v2/authorize?${params.toString()}`;
+
+    } else if (service_name === "notion") {
+      const clientId = Deno.env.get("NOTION_CLIENT_ID");
+      if (!clientId) {
+        return jsonResponse({ error: "NOTION_CLIENT_ID not configured" }, 500);
+      }
+
+      scopes = ["read_content", "insert_content", "update_content"];
+      const params = new URLSearchParams({
+        client_id: clientId,
+        redirect_uri: callbackUrl,
+        response_type: "code",
+        owner: "user",
+        state: stateToken,
+      });
+      authUrl = `https://api.notion.com/v1/oauth/authorize?${params.toString()}`;
+
+    } else if (service_name === "hubspot") {
+      const clientId = Deno.env.get("HUBSPOT_CLIENT_ID");
+      if (!clientId) {
+        return jsonResponse({ error: "HUBSPOT_CLIENT_ID not configured" }, 500);
+      }
+
+      scopes = HUBSPOT_SCOPES.split(" ");
+      const params = new URLSearchParams({
+        client_id: clientId,
+        redirect_uri: callbackUrl,
+        scope: HUBSPOT_SCOPES,
+        state: stateToken,
+      });
+      authUrl = `https://app.hubspot.com/oauth/authorize?${params.toString()}`;
+
+    } else if (service_name === "stripe") {
+      const clientId = Deno.env.get("STRIPE_CONNECT_CLIENT_ID");
+      if (!clientId) {
+        return jsonResponse({ error: "STRIPE_CONNECT_CLIENT_ID not configured" }, 500);
+      }
+
+      scopes = ["read_write"];
+      const params = new URLSearchParams({
+        client_id: clientId,
+        response_type: "code",
+        scope: "read_write",
+        state: stateToken,
+        redirect_uri: callbackUrl,
+      });
+      authUrl = `https://connect.stripe.com/oauth/authorize?${params.toString()}`;
 
     } else {
       return jsonResponse({ error: `OAuth not supported for ${service_name}. Use credentials-create for API keys.` }, 400);

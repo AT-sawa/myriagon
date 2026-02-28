@@ -106,6 +106,101 @@ serve(async (req) => {
       };
       serviceNames = ["slack"];
 
+    } else if (stateRow.service_name === "notion") {
+      // Notion OAuth token exchange (Basic Auth + JSON body)
+      const clientId = Deno.env.get("NOTION_CLIENT_ID")!;
+      const clientSecret = Deno.env.get("NOTION_CLIENT_SECRET")!;
+      const basicAuth = btoa(`${clientId}:${clientSecret}`);
+
+      const tokenRes = await fetch("https://api.notion.com/v1/oauth/token", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Basic ${basicAuth}`,
+        },
+        body: JSON.stringify({
+          grant_type: "authorization_code",
+          code,
+          redirect_uri: callbackUrl,
+        }),
+      });
+
+      if (!tokenRes.ok) {
+        const errBody = await tokenRes.text();
+        console.error("Notion token exchange failed:", errBody);
+        return jsonResponse({ error: "Notion認証に失敗しました。もう一度お試しください。" }, 500);
+      }
+
+      const notionData = await tokenRes.json();
+      tokens = {
+        access_token: notionData.access_token,
+        token_type: "Bearer",
+        workspace_id: notionData.workspace_id,
+        workspace_name: notionData.workspace_name,
+        bot_id: notionData.bot_id,
+        obtained_at: new Date().toISOString(),
+      };
+      serviceNames = ["notion"];
+
+    } else if (stateRow.service_name === "hubspot") {
+      // HubSpot OAuth token exchange (form-urlencoded)
+      const tokenRes = await fetch("https://api.hubapi.com/oauth/v1/token", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          grant_type: "authorization_code",
+          code,
+          client_id: Deno.env.get("HUBSPOT_CLIENT_ID")!,
+          client_secret: Deno.env.get("HUBSPOT_CLIENT_SECRET")!,
+          redirect_uri: callbackUrl,
+        }),
+      });
+
+      if (!tokenRes.ok) {
+        const errBody = await tokenRes.text();
+        console.error("HubSpot token exchange failed:", errBody);
+        return jsonResponse({ error: "HubSpot認証に失敗しました。もう一度お試しください。" }, 500);
+      }
+
+      const hubData = await tokenRes.json();
+      tokens = {
+        access_token: hubData.access_token,
+        refresh_token: hubData.refresh_token,
+        token_type: "Bearer",
+        expires_in: hubData.expires_in,
+        obtained_at: new Date().toISOString(),
+      };
+      serviceNames = ["hubspot"];
+
+    } else if (stateRow.service_name === "stripe") {
+      // Stripe Connect OAuth token exchange (form-urlencoded)
+      const tokenRes = await fetch("https://connect.stripe.com/oauth/token", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          grant_type: "authorization_code",
+          code,
+          client_secret: Deno.env.get("STRIPE_SECRET_KEY")!,
+        }),
+      });
+
+      if (!tokenRes.ok) {
+        const errBody = await tokenRes.text();
+        console.error("Stripe token exchange failed:", errBody);
+        return jsonResponse({ error: "Stripe認証に失敗しました。もう一度お試しください。" }, 500);
+      }
+
+      const stripeData = await tokenRes.json();
+      tokens = {
+        access_token: stripeData.access_token || stripeData.stripe_user_id,
+        refresh_token: stripeData.refresh_token,
+        stripe_user_id: stripeData.stripe_user_id,
+        stripe_publishable_key: stripeData.stripe_publishable_key,
+        token_type: "Bearer",
+        obtained_at: new Date().toISOString(),
+      };
+      serviceNames = ["stripe"];
+
     } else {
       return jsonResponse({ error: "Unknown service: " + stateRow.service_name }, 400);
     }

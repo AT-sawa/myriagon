@@ -19,6 +19,9 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="MYRIAGON - AIワークフロー自動化">
 <meta name="twitter:description" content="50以上のサービスをAIで繋いで業務を自動化。ノーコードで完成。">
+<!-- Favicon -->
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%23a855f7'/%3E%3Cstop offset='100%25' stop-color='%233b82f6'/%3E%3C/linearGradient%3E%3C/defs%3E%3Ccircle cx='32' cy='32' r='30' fill='%23070809' stroke='url(%23g)' stroke-width='3'/%3E%3Ctext x='32' y='44' text-anchor='middle' font-size='32' font-weight='bold' fill='url(%23g)' font-family='sans-serif'%3EM%3C/text%3E%3C/svg%3E">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='40' fill='%23070809'/%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%23a855f7'/%3E%3Cstop offset='100%25' stop-color='%233b82f6'/%3E%3C/linearGradient%3E%3C/defs%3E%3Ctext x='90' y='125' text-anchor='middle' font-size='100' font-weight='bold' fill='url(%23g)' font-family='sans-serif'%3EM%3C/text%3E%3C/svg%3E">
 <!-- Theme -->
 <meta name="theme-color" content="#070809">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1779,6 +1782,7 @@ async function disconnectService(credentialId, label) {
 // ─── Service connection branching ───
 var GOOGLE_SERVICES = ['gmail', 'google_sheets', 'google_drive'];
 var PLATFORM_KEY_SERVICES = ['openai', 'anthropic'];
+var OAUTH_SERVICES = ['slack', 'notion', 'hubspot', 'stripe'];
 
 async function connectService(serviceName) {
   if (!supabase) return;
@@ -1786,6 +1790,8 @@ async function connectService(serviceName) {
     connectGoogleServices();
   } else if (PLATFORM_KEY_SERVICES.includes(serviceName)) {
     connectWithPlatformKey(serviceName);
+  } else if (OAUTH_SERVICES.includes(serviceName)) {
+    startOAuthFlow(serviceName);
   } else {
     showApiKeyModal(serviceName);
   }
@@ -2377,6 +2383,23 @@ function showToast(message, type) {
 // Init: check if already logged in
 // ═══════════════════════════════════════════
 (async function init() {
+  // ─── OAuth popup callback handler ───
+  // When this page loads inside a popup with /oauth/callback?code=...&state=...,
+  // forward the code/state to the parent window and close the popup.
+  var urlParams = new URLSearchParams(window.location.search);
+  var oauthCode = urlParams.get('code');
+  var oauthState = urlParams.get('state');
+  if (oauthCode && oauthState && window.opener) {
+    window.opener.postMessage({
+      type: 'oauth-callback-code',
+      code: oauthCode,
+      state: oauthState
+    }, window.location.origin);
+    // Clean URL and close popup
+    setTimeout(function() { window.close(); }, 500);
+    return; // Don't initialize the full app in the popup
+  }
+
   // nav and .app are hidden via inline style="display:none" in HTML.
   // onLogin() will show them when user authenticates.
   if (!supabase) return;
