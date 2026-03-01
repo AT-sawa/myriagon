@@ -1781,15 +1781,13 @@ async function disconnectService(credentialId, label) {
 
 // ─── Service connection branching ───
 var GOOGLE_SERVICES = ['gmail', 'google_sheets', 'google_drive'];
-var PLATFORM_KEY_SERVICES = ['openai', 'anthropic'];
 var OAUTH_SERVICES = ['slack', 'notion', 'hubspot', 'stripe'];
+// OpenAI, Anthropic, Supabase → BYOK (ユーザー自身のAPIキー入力)
 
 async function connectService(serviceName) {
   if (!supabase) return;
   if (GOOGLE_SERVICES.includes(serviceName)) {
     connectGoogleServices();
-  } else if (PLATFORM_KEY_SERVICES.includes(serviceName)) {
-    connectWithPlatformKey(serviceName);
   } else if (OAUTH_SERVICES.includes(serviceName)) {
     startOAuthFlow(serviceName);
   } else {
@@ -1927,9 +1925,6 @@ var pendingApiKeyService = null;
 var API_KEY_HELP = {
   openai: 'https://platform.openai.com/api-keys で取得',
   anthropic: 'https://console.anthropic.com/settings/keys で取得',
-  notion: 'Notion My Integrations から Internal Token を取得',
-  hubspot: 'HubSpot Settings > Integrations > API Key',
-  stripe: 'Stripe Dashboard > Developers > API keys',
   supabase: 'Supabase Dashboard > Project Settings > API',
 };
 
