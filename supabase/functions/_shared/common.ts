@@ -5,6 +5,21 @@ export interface AuthContext {
   supabase: SupabaseClient;
   userId: string;
   tenantId: string;
+  plan: "starter" | "growth" | "enterprise";
+}
+
+// ─── Plan Limits ─────────────────────────────────────────────
+export const PLAN_LIMITS: Record<string, { maxWorkflows: number; maxExecutionsPerMonth: number; maxServices: number }> = {
+  starter:    { maxWorkflows: 5,       maxExecutionsPerMonth: 1000,  maxServices: 3 },
+  growth:     { maxWorkflows: Infinity, maxExecutionsPerMonth: 10000, maxServices: Infinity },
+  enterprise: { maxWorkflows: Infinity, maxExecutionsPerMonth: Infinity, maxServices: Infinity },
+};
+
+export class PlanLimitError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "PlanLimitError";
+  }
 }
 
 // ─── CORS Headers ────────────────────────────────────────────
@@ -52,7 +67,20 @@ export async function authenticate(req: Request): Promise<AuthContext> {
     throw new RateLimitError("Rate limit exceeded (100 req/min)");
   }
 
-  return { supabase, userId: user.id, tenantId: userData.tenant_id };
+  // Fetch tenant plan
+  const serviceClient = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+  );
+  const { data: tenant } = await serviceClient
+    .from("tenants")
+    .select("plan")
+    .eq("id", userData.tenant_id)
+    .single();
+
+  const plan = (tenant?.plan || "starter") as AuthContext["plan"];
+
+  return { supabase, userId: user.id, tenantId: userData.tenant_id, plan };
 }
 
 // ─── Retry Helper (3 attempts) ──────────────────────────────
@@ -119,6 +147,12 @@ export function errorResponse(err: unknown): Response {
   if (err instanceof RateLimitError) {
     return new Response(JSON.stringify({ error: err.message }), {
       status: 429,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+  if (err instanceof PlanLimitError) {
+    return new Response(JSON.stringify({ error: err.message, code: "PLAN_LIMIT" }), {
+      status: 403,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }

@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { N8N_CRED_TYPE_MAP, getN8nConfig } from "../_shared/n8n.ts";
+import { PLAN_LIMITS } from "../_shared/common.ts";
 
 const ALLOWED_ORIGIN = Deno.env.get("FRONTEND_URL") || "https://myriagon.app";
 const corsHeaders = {
@@ -56,6 +57,35 @@ serve(async (req) => {
     if (!userData) {
       return new Response(JSON.stringify({ error: "User not found" }), {
         status: 404,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ── Plan limit check: max workflows ──
+    const serviceClient = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
+    const { data: tenant } = await serviceClient
+      .from("tenants")
+      .select("plan")
+      .eq("id", userData.tenant_id)
+      .single();
+    const plan = tenant?.plan || "starter";
+    const limits = PLAN_LIMITS[plan] || PLAN_LIMITS.starter;
+
+    const { count: workflowCount } = await supabase
+      .from("workflows")
+      .select("id", { count: "exact", head: true })
+      .eq("tenant_id", userData.tenant_id)
+      .in("status", ["active", "paused"]);
+
+    if ((workflowCount || 0) >= limits.maxWorkflows) {
+      return new Response(JSON.stringify({
+        error: `${plan}プランのフロー上限（${limits.maxWorkflows}個）に達しています。プランをアップグレードしてください。`,
+        code: "PLAN_LIMIT",
+      }), {
+        status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }

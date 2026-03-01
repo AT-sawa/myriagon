@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
-import { authenticate, corsHeaders, errorResponse, jsonResponse } from "../_shared/common.ts";
+import { authenticate, corsHeaders, errorResponse, jsonResponse, PLAN_LIMITS } from "../_shared/common.ts";
 import { encryptTokens, bytesToHex } from "../_shared/crypto.ts";
 import { getN8nConfig, createN8nCredential, N8N_CRED_TYPE_MAP, buildN8nCredData } from "../_shared/n8n.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -22,6 +22,23 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
+
+    // ── Plan limit check: max services ──
+    const limits = PLAN_LIMITS[ctx.plan] || PLAN_LIMITS.starter;
+    const { count: credCount } = await serviceClient
+      .from("credentials")
+      .select("id", { count: "exact", head: true })
+      .eq("tenant_id", ctx.tenantId)
+      .eq("status", "connected");
+
+    // Google OAuth creates 3 services at once, so check if adding would exceed
+    const adding = (service_name === "google" && body.provider_token) ? 3 : 1;
+    if ((credCount || 0) + adding > limits.maxServices) {
+      return jsonResponse({
+        error: `${ctx.plan}プランの接続サービス上限（${limits.maxServices}個）に達しています。プランをアップグレードしてください。`,
+        code: "PLAN_LIMIT",
+      }, 403);
+    }
 
     // ── Mode 1: Google OAuth via Supabase Auth provider_token ──
     if (service_name === "google" && provider_token) {
