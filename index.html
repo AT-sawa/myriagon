@@ -15,10 +15,14 @@
 <meta property="og:url" content="https://myriagon.app">
 <meta property="og:site_name" content="MYRIAGON">
 <meta property="og:locale" content="ja_JP">
+<meta property="og:image" content="https://myriagon.app/og-image.svg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
 <!-- Twitter Card -->
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="MYRIAGON - AIワークフロー自動化">
 <meta name="twitter:description" content="50以上のサービスをAIで繋いで業務を自動化。ノーコードで完成。">
+<meta name="twitter:image" content="https://myriagon.app/og-image.svg">
 <!-- Favicon -->
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%23a855f7'/%3E%3Cstop offset='100%25' stop-color='%233b82f6'/%3E%3C/linearGradient%3E%3C/defs%3E%3Ccircle cx='32' cy='32' r='30' fill='%23070809' stroke='url(%23g)' stroke-width='3'/%3E%3Ctext x='32' y='44' text-anchor='middle' font-size='32' font-weight='bold' fill='url(%23g)' font-family='sans-serif'%3EM%3C/text%3E%3C/svg%3E">
 <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='40' fill='%23070809'/%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%23a855f7'/%3E%3Cstop offset='100%25' stop-color='%233b82f6'/%3E%3C/linearGradient%3E%3C/defs%3E%3Ctext x='90' y='125' text-anchor='middle' font-size='100' font-weight='bold' fill='url(%23g)' font-family='sans-serif'%3EM%3C/text%3E%3C/svg%3E">
@@ -1128,6 +1132,7 @@ select.form-input { cursor: pointer; }
     <div class="lp-footer-right">
       <a class="lp-footer-link" href="/terms" onclick="event.preventDefault();document.getElementById('terms-modal').classList.remove('hidden')">利用規約</a>
       <a class="lp-footer-link" href="/privacy" onclick="event.preventDefault();document.getElementById('privacy-modal').classList.remove('hidden')">プライバシーポリシー</a>
+      <a class="lp-footer-link" href="/tokushoho" onclick="event.preventDefault();document.getElementById('tokushoho-modal').classList.remove('hidden')">特定商取引法に基づく表記</a>
       <span class="logo-text rainbow-text" style="font-size:12px">MYRIAGON</span>
     </div>
   </div>
@@ -1193,6 +1198,30 @@ select.form-input { cursor: pointer; }
       <p>当社は、必要に応じて本ポリシーを変更することがあります。変更後のポリシーは、本サービス上に掲示した時点から効力を生じます。</p>
       <h3 style="color:var(--text1);font-size:14px;margin:20px 0 8px">10. お問い合わせ</h3>
       <p>本ポリシーに関するお問い合わせは、本サービス内のサポート窓口までご連絡ください。</p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ TOKUSHOHO (特定商取引法) MODAL ═══ -->
+<div class="modal-overlay hidden" id="tokushoho-modal">
+  <div class="modal" style="max-width:700px;max-height:80vh;overflow-y:auto">
+    <button class="modal-close" onclick="document.getElementById('tokushoho-modal').classList.add('hidden')">✕</button>
+    <div class="modal-title">特定商取引法に基づく表記</div>
+    <div style="color:var(--text2);font-size:13px;line-height:1.8">
+      <p style="color:var(--text3);margin-bottom:16px">最終更新日: 2026年3月2日</p>
+      <table style="width:100%;border-collapse:collapse;margin-top:8px">
+        <tr style="border-bottom:1px solid var(--border)"><td style="padding:12px 8px;color:var(--text1);font-weight:500;white-space:nowrap;vertical-align:top;width:140px">販売事業者</td><td style="padding:12px 8px">Amorphous Inc.</td></tr>
+        <tr style="border-bottom:1px solid var(--border)"><td style="padding:12px 8px;color:var(--text1);font-weight:500;white-space:nowrap;vertical-align:top">運営責任者</td><td style="padding:12px 8px">請求があった場合に遅滞なく開示いたします</td></tr>
+        <tr style="border-bottom:1px solid var(--border)"><td style="padding:12px 8px;color:var(--text1);font-weight:500;white-space:nowrap;vertical-align:top">所在地</td><td style="padding:12px 8px">請求があった場合に遅滞なく開示いたします</td></tr>
+        <tr style="border-bottom:1px solid var(--border)"><td style="padding:12px 8px;color:var(--text1);font-weight:500;white-space:nowrap;vertical-align:top">連絡先</td><td style="padding:12px 8px">support@myriagon.app<br>請求があった場合に電話番号を遅滞なく開示いたします</td></tr>
+        <tr style="border-bottom:1px solid var(--border)"><td style="padding:12px 8px;color:var(--text1);font-weight:500;white-space:nowrap;vertical-align:top">販売価格</td><td style="padding:12px 8px">Starterプラン: 月額 ¥9,800（税込）<br>Growthプラン: 月額 ¥29,800（税込）<br>Enterpriseプラン: 個別見積り<br>※その他、各プランの詳細は料金ページをご確認ください</td></tr>
+        <tr style="border-bottom:1px solid var(--border)"><td style="padding:12px 8px;color:var(--text1);font-weight:500;white-space:nowrap;vertical-align:top">販売価格以外の必要料金</td><td style="padding:12px 8px">インターネット接続にかかる通信費はお客様のご負担となります</td></tr>
+        <tr style="border-bottom:1px solid var(--border)"><td style="padding:12px 8px;color:var(--text1);font-weight:500;white-space:nowrap;vertical-align:top">支払方法</td><td style="padding:12px 8px">クレジットカード決済（Stripe経由）</td></tr>
+        <tr style="border-bottom:1px solid var(--border)"><td style="padding:12px 8px;color:var(--text1);font-weight:500;white-space:nowrap;vertical-align:top">支払時期</td><td style="padding:12px 8px">サブスクリプション開始時に初回決済、以降毎月自動更新</td></tr>
+        <tr style="border-bottom:1px solid var(--border)"><td style="padding:12px 8px;color:var(--text1);font-weight:500;white-space:nowrap;vertical-align:top">サービス提供時期</td><td style="padding:12px 8px">お支払い完了後、即時ご利用いただけます</td></tr>
+        <tr style="border-bottom:1px solid var(--border)"><td style="padding:12px 8px;color:var(--text1);font-weight:500;white-space:nowrap;vertical-align:top">キャンセル・解約</td><td style="padding:12px 8px">サブスクリプションはいつでもキャンセル可能です。キャンセル後は現在の請求期間の終了までサービスをご利用いただけます。日割り返金は行っておりません。</td></tr>
+        <tr><td style="padding:12px 8px;color:var(--text1);font-weight:500;white-space:nowrap;vertical-align:top">動作環境</td><td style="padding:12px 8px">最新版の Google Chrome、Firefox、Safari、Microsoft Edge<br>安定したインターネット接続環境</td></tr>
+      </table>
     </div>
   </div>
 </div>
@@ -2469,6 +2498,29 @@ function showToast(message, type) {
   if (session?.user) {
     currentUser = session.user;
     onLogin();
+
+    // ─── Stripe Checkout success verification ───
+    var sessionId = urlParams.get('session_id');
+    var upgradedPlan = urlParams.get('plan');
+    if (sessionId && upgradedPlan) {
+      // Clean URL params
+      window.history.replaceState({}, '', window.location.pathname);
+      // Verify plan was actually updated by checking the tenant record
+      try {
+        var { data: userData } = await supabase.from('users').select('tenant_id').eq('auth_uid', currentUser.id).single();
+        if (userData) {
+          var { data: tenantData } = await supabase.from('tenants').select('plan').eq('id', userData.tenant_id).single();
+          if (tenantData && tenantData.plan === upgradedPlan) {
+            showToast(upgradedPlan.charAt(0).toUpperCase() + upgradedPlan.slice(1) + 'プランへのアップグレードが完了しました', 'success');
+          } else {
+            // Webhook may not have processed yet — show pending message
+            showToast('プラン変更を処理中です。反映まで数秒お待ちください。', 'info');
+          }
+        }
+      } catch (e) {
+        console.error('Plan verification failed:', e);
+      }
+    }
   }
 })();
 

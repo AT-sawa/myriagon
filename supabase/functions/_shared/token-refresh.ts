@@ -55,30 +55,64 @@ export async function getValidAccessToken(
     return { accessToken: tokens.access_token as string, tokenType: "Bearer" };
   }
 
-  // Token expired - refresh (Google only; Slack tokens don't expire)
+  // Token expired - refresh
+  // Slack tokens don't expire
   if (serviceName === "slack") {
     return { accessToken: tokens.access_token as string, tokenType: "Bearer" };
   }
 
-  // Google OAuth refresh
   const refreshToken = tokens.refresh_token as string;
   if (!refreshToken) {
     throw new Error(`${serviceName}: no refresh_token available`);
   }
 
-  const clientId = Deno.env.get("GOOGLE_CLIENT_ID");
-  const clientSecret = Deno.env.get("GOOGLE_CLIENT_SECRET");
+  // Service-specific refresh configuration
+  const REFRESH_CONFIG: Record<string, { url: string; clientIdEnv: string; clientSecretEnv: string }> = {
+    gmail:         { url: "https://oauth2.googleapis.com/token", clientIdEnv: "GOOGLE_CLIENT_ID", clientSecretEnv: "GOOGLE_CLIENT_SECRET" },
+    google_sheets: { url: "https://oauth2.googleapis.com/token", clientIdEnv: "GOOGLE_CLIENT_ID", clientSecretEnv: "GOOGLE_CLIENT_SECRET" },
+    google_drive:  { url: "https://oauth2.googleapis.com/token", clientIdEnv: "GOOGLE_CLIENT_ID", clientSecretEnv: "GOOGLE_CLIENT_SECRET" },
+    notion:        { url: "https://api.notion.com/v1/oauth/token", clientIdEnv: "NOTION_CLIENT_ID", clientSecretEnv: "NOTION_CLIENT_SECRET" },
+    hubspot:       { url: "https://api.hubapi.com/oauth/v1/token", clientIdEnv: "HUBSPOT_CLIENT_ID", clientSecretEnv: "HUBSPOT_CLIENT_SECRET" },
+  };
 
-  const refreshRes = await fetch("https://oauth2.googleapis.com/token", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      grant_type: "refresh_token",
-      client_id: clientId!,
-      client_secret: clientSecret!,
-      refresh_token: refreshToken,
-    }),
-  });
+  const config = REFRESH_CONFIG[serviceName];
+  if (!config) {
+    // No refresh support for this service, return existing token
+    return { accessToken: tokens.access_token as string, tokenType: "Bearer" };
+  }
+
+  const clientId = Deno.env.get(config.clientIdEnv);
+  const clientSecret = Deno.env.get(config.clientSecretEnv);
+
+  let refreshRes: Response;
+
+  if (serviceName === "notion") {
+    // Notion uses Basic auth (client_id:client_secret) and JSON body
+    const basicAuth = btoa(`${clientId}:${clientSecret}`);
+    refreshRes = await fetch(config.url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Basic ${basicAuth}`,
+      },
+      body: JSON.stringify({
+        grant_type: "refresh_token",
+        refresh_token: refreshToken,
+      }),
+    });
+  } else {
+    // Google, HubSpot use form-encoded body
+    refreshRes = await fetch(config.url, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        grant_type: "refresh_token",
+        client_id: clientId!,
+        client_secret: clientSecret!,
+        refresh_token: refreshToken,
+      }),
+    });
+  }
 
   if (!refreshRes.ok) {
     const errBody = await refreshRes.text();

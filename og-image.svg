@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#070809"/>
+      <stop offset="100%" stop-color="#0b0c0e"/>
+    </linearGradient>
+    <linearGradient id="rainbow" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#ff6b6b"/>
+      <stop offset="16%" stop-color="#ff9f43"/>
+      <stop offset="32%" stop-color="#ffd32a"/>
+      <stop offset="48%" stop-color="#26de81"/>
+      <stop offset="64%" stop-color="#45aaf2"/>
+      <stop offset="80%" stop-color="#a55eea"/>
+      <stop offset="100%" stop-color="#ff6b6b"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect x="0" y="0" width="1200" height="4" fill="url(#rainbow)"/>
+  <text x="600" y="260" text-anchor="middle" font-family="sans-serif" font-size="80" font-weight="700" fill="url(#rainbow)">MYRIAGON</text>
+  <text x="600" y="340" text-anchor="middle" font-family="sans-serif" font-size="32" fill="#6a7585">AI Workflow Automation Platform</text>
+  <text x="600" y="420" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#3c4556">50+ services. No code. AI-powered.</text>
+  <rect x="0" y="626" width="1200" height="4" fill="url(#rainbow)"/>
+</svg>

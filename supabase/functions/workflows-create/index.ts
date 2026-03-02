@@ -90,6 +90,28 @@ serve(async (req) => {
       });
     }
 
+    // ── Plan limit check: max executions per month ──
+    if (limits.maxExecutionsPerMonth !== Infinity) {
+      const monthStart = new Date();
+      monthStart.setDate(1);
+      monthStart.setHours(0, 0, 0, 0);
+      const { count: execCount } = await serviceClient
+        .from("executions")
+        .select("id", { count: "exact", head: true })
+        .eq("tenant_id", userData.tenant_id)
+        .gte("started_at", monthStart.toISOString());
+
+      if ((execCount || 0) >= limits.maxExecutionsPerMonth) {
+        return new Response(JSON.stringify({
+          error: `${plan}プランの月間実行上限（${limits.maxExecutionsPerMonth}回）に達しています。プランをアップグレードしてください。`,
+          code: "PLAN_LIMIT",
+        }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
     const { template_id, parameters } = await req.json();
 
     // 1. Get template workflow_json
@@ -114,10 +136,6 @@ serve(async (req) => {
     const workflowJson = JSON.parse(workflowStr);
 
     // 3. Get n8n API key from Vault
-    const serviceClient = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
     const { apiKey: n8nApiKey, baseUrl: n8nBaseUrl } = await getN8nConfig();
 
     // 3.5 Load tenant credentials and bind to workflow nodes
@@ -132,6 +150,24 @@ serve(async (req) => {
       if (c.n8n_credential_id) {
         credMap[c.service_name] = c.n8n_credential_id;
       }
+    }
+
+    // Check that all required services have n8n credentials
+    const requiredServices = new Set<string>();
+    for (const node of (workflowJson.nodes || [])) {
+      const svc = NODE_TYPE_TO_SERVICE[node.type as string];
+      if (svc) requiredServices.add(svc);
+    }
+    const missingCreds = [...requiredServices].filter(svc => !credMap[svc]);
+    if (missingCreds.length > 0) {
+      const svcNames = missingCreds.join(", ");
+      return new Response(JSON.stringify({
+        error: `以下のサービスが未接続です: ${svcNames}。先に「接続」ページからサービスを接続してください。`,
+        code: "MISSING_CREDENTIALS",
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     // Inject n8n credentials into each node
