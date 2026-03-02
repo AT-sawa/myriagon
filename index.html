@@ -1234,15 +1234,24 @@ select.form-input { cursor: pointer; }
       <p>当社は、以下の場合を除き、個人情報を第三者に提供しません：ユーザーの同意がある場合、法令に基づく場合、ユーザーが連携を指示した外部サービス（Gmail, Slack, Notion等）への接続に必要な場合。</p>
       <h3 style="color:var(--text1);font-size:14px;margin:20px 0 8px">5. 外部サービスとの連携</h3>
       <p>本サービスは、ユーザーの指示に基づきGmail、Slack、Google Sheets、Notion、HubSpot、Stripe等の外部サービスと連携します。これらのサービスにおける情報の取扱いは、各サービスのプライバシーポリシーに従います。</p>
-      <h3 style="color:var(--text1);font-size:14px;margin:20px 0 8px">6. データの保持期間</h3>
+      <h3 style="color:var(--text1);font-size:14px;margin:20px 0 8px">6. Google APIサービス ユーザーデータポリシー</h3>
+      <p>本サービスのGoogle APIサービスから受信した情報の使用および他のアプリへの転送は、<a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noopener" style="color:var(--accent)">Google APIサービス ユーザーデータポリシー</a>（Limited Use（限定利用）の要件を含む）に準拠します。</p>
+      <p style="margin-top:8px">具体的には、本サービスは以下を遵守します：</p>
+      <ul style="margin:8px 0;padding-left:20px">
+        <li>Google APIから取得したデータは、ユーザーが明示的に指示したワークフローの実行にのみ使用します。</li>
+        <li>Google APIから取得したデータを広告の表示・配信に使用しません。</li>
+        <li>Google APIから取得したデータを、ユーザーの明示的な同意なく第三者に提供・転送しません（ワークフローの実行に必要な場合を除く）。</li>
+        <li>人間がユーザーデータを閲覧するのは、ユーザーの同意がある場合、セキュリティ目的で必要な場合、法令に基づく場合、またはデータが匿名化・集計されている場合に限ります。</li>
+      </ul>
+      <h3 style="color:var(--text1);font-size:14px;margin:20px 0 8px">7. データの保持期間</h3>
       <p>ユーザーのアカウントが有効な間、情報を保持します。アカウント削除後、個人情報は30日以内に削除されます。ただし、法令で保持が義務付けられている情報はこの限りではありません。</p>
-      <h3 style="color:var(--text1);font-size:14px;margin:20px 0 8px">7. Cookieの使用</h3>
+      <h3 style="color:var(--text1);font-size:14px;margin:20px 0 8px">8. Cookieの使用</h3>
       <p>本サービスは、認証状態の維持のためにCookieおよびローカルストレージを使用します。</p>
-      <h3 style="color:var(--text1);font-size:14px;margin:20px 0 8px">8. ユーザーの権利</h3>
+      <h3 style="color:var(--text1);font-size:14px;margin:20px 0 8px">9. ユーザーの権利</h3>
       <p>ユーザーは、当社に対して自己の個人情報の開示・訂正・削除を請求することができます。請求はサポート窓口までご連絡ください。</p>
-      <h3 style="color:var(--text1);font-size:14px;margin:20px 0 8px">9. ポリシーの変更</h3>
+      <h3 style="color:var(--text1);font-size:14px;margin:20px 0 8px">10. ポリシーの変更</h3>
       <p>当社は、必要に応じて本ポリシーを変更することがあります。変更後のポリシーは、本サービス上に掲示した時点から効力を生じます。</p>
-      <h3 style="color:var(--text1);font-size:14px;margin:20px 0 8px">10. お問い合わせ</h3>
+      <h3 style="color:var(--text1);font-size:14px;margin:20px 0 8px">11. お問い合わせ</h3>
       <p>本ポリシーに関するお問い合わせは、本サービス内のサポート窓口までご連絡ください。</p>
     </div>
   </div>
@@ -2420,6 +2429,16 @@ function renderSidebarRagKbs() {
 
 // ─── Upload Zone Drag & Drop ───
 (function setupUploadZone() {
+  // Auto-open legal modals based on URL path
+  (function() {
+    var pathModals = { '/privacy': 'privacy-modal', '/terms': 'terms-modal', '/tokushoho': 'tokushoho-modal' };
+    var modal = pathModals[window.location.pathname];
+    if (modal) {
+      var el = document.getElementById(modal);
+      if (el) el.classList.remove('hidden');
+    }
+  })();
+
   document.addEventListener('DOMContentLoaded', function() {
     var zone = document.getElementById('upload-zone');
     if (!zone) return;
