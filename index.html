@@ -26,6 +26,12 @@
   "offers": [
     {
       "@type": "Offer",
+      "name": "Free",
+      "price": "0",
+      "priceCurrency": "JPY"
+    },
+    {
+      "@type": "Offer",
       "name": "Starter",
       "price": "9800",
       "priceCurrency": "JPY",
@@ -1119,10 +1125,22 @@ select.form-input { cursor: pointer; }
   <section class="lp-section lp-section-border" id="lp-pricing">
     <div class="lp-section-inner">
       <div class="lp-section-title">シンプルな料金プラン</div>
-      <div class="lp-section-sub">ビジネスの規模に合わせて選べる3つのプラン。いつでもアップグレード可能です。</div>
+      <div class="lp-section-sub">まずは無料で始めて、ビジネスの成長に合わせてアップグレード。</div>
       <div class="lp-pricing">
         <div class="pricing-card">
-          <div class="pricing-plan">Starter</div>
+          <div class="pricing-plan">Free</div>
+          <div class="pricing-price">&#165;0</div>
+          <div class="pricing-period">ずっと無料</div>
+          <ul class="pricing-features">
+            <li>フロー 2 個まで</li>
+            <li>実行 50 回/月</li>
+            <li>接続 2 サービス</li>
+            <li>全テンプレート利用可</li>
+          </ul>
+          <button class="btn-p" style="width:100%" onclick="signInWithGoogle()">無料で始める</button>
+        </div>
+        <div class="pricing-card featured">
+          <div class="pricing-plan rainbow-text">Starter</div>
           <div class="pricing-price">&#165;9,800</div>
           <div class="pricing-period">/ 月</div>
           <ul class="pricing-features">
@@ -1131,10 +1149,10 @@ select.form-input { cursor: pointer; }
             <li>接続 3 サービス</li>
             <li>メールサポート</li>
           </ul>
-          <button class="btn-p" style="width:100%" onclick="signInWithGoogle()">無料で始める</button>
+          <button class="btn-p" style="width:100%" onclick="signInWithGoogle()">始める</button>
         </div>
-        <div class="pricing-card featured">
-          <div class="pricing-plan rainbow-text">Growth</div>
+        <div class="pricing-card">
+          <div class="pricing-plan">Growth</div>
           <div class="pricing-price">&#165;29,800</div>
           <div class="pricing-period">/ 月</div>
           <ul class="pricing-features">
@@ -1144,7 +1162,7 @@ select.form-input { cursor: pointer; }
             <li>優先サポート</li>
             <li>カスタムテンプレート</li>
           </ul>
-          <button class="btn-p" style="width:100%" onclick="signInWithGoogle()">無料で始める</button>
+          <button class="btn-p" style="width:100%" onclick="signInWithGoogle()">始める</button>
         </div>
         <div class="pricing-card">
           <div class="pricing-plan">Enterprise</div>
@@ -1157,7 +1175,7 @@ select.form-input { cursor: pointer; }
             <li>SLA 保証</li>
             <li>専任サポート</li>
           </ul>
-          <button class="btn-s" style="width:100%" onclick="window.open('mailto:sales@myriagon.io')">お問い合わせ</button>
+          <button class="btn-s" style="width:100%" onclick="window.open('mailto:support@myriagon.app')">お問い合わせ</button>
         </div>
       </div>
     </div>
@@ -1269,7 +1287,7 @@ select.form-input { cursor: pointer; }
         <tr style="border-bottom:1px solid var(--border)"><td style="padding:12px 8px;color:var(--text1);font-weight:500;white-space:nowrap;vertical-align:top">運営責任者</td><td style="padding:12px 8px">請求があった場合に遅滞なく開示いたします</td></tr>
         <tr style="border-bottom:1px solid var(--border)"><td style="padding:12px 8px;color:var(--text1);font-weight:500;white-space:nowrap;vertical-align:top">所在地</td><td style="padding:12px 8px">請求があった場合に遅滞なく開示いたします</td></tr>
         <tr style="border-bottom:1px solid var(--border)"><td style="padding:12px 8px;color:var(--text1);font-weight:500;white-space:nowrap;vertical-align:top">連絡先</td><td style="padding:12px 8px">support@myriagon.app<br>請求があった場合に電話番号を遅滞なく開示いたします</td></tr>
-        <tr style="border-bottom:1px solid var(--border)"><td style="padding:12px 8px;color:var(--text1);font-weight:500;white-space:nowrap;vertical-align:top">販売価格</td><td style="padding:12px 8px">Starterプラン: 月額 ¥9,800（税込）<br>Growthプラン: 月額 ¥29,800（税込）<br>Enterpriseプラン: 個別見積り<br>※その他、各プランの詳細は料金ページをご確認ください</td></tr>
+        <tr style="border-bottom:1px solid var(--border)"><td style="padding:12px 8px;color:var(--text1);font-weight:500;white-space:nowrap;vertical-align:top">販売価格</td><td style="padding:12px 8px">Freeプラン: 無料<br>Starterプラン: 月額 ¥9,800（税込）<br>Growthプラン: 月額 ¥29,800（税込）<br>Enterpriseプラン: 個別見積り<br>※その他、各プランの詳細は料金ページをご確認ください</td></tr>
         <tr style="border-bottom:1px solid var(--border)"><td style="padding:12px 8px;color:var(--text1);font-weight:500;white-space:nowrap;vertical-align:top">販売価格以外の必要料金</td><td style="padding:12px 8px">インターネット接続にかかる通信費はお客様のご負担となります</td></tr>
         <tr style="border-bottom:1px solid var(--border)"><td style="padding:12px 8px;color:var(--text1);font-weight:500;white-space:nowrap;vertical-align:top">支払方法</td><td style="padding:12px 8px">クレジットカード決済（Stripe経由）</td></tr>
         <tr style="border-bottom:1px solid var(--border)"><td style="padding:12px 8px;color:var(--text1);font-weight:500;white-space:nowrap;vertical-align:top">支払時期</td><td style="padding:12px 8px">サブスクリプション開始時に初回決済、以降毎月自動更新</td></tr>
@@ -1308,7 +1326,19 @@ select.form-input { cursor: pointer; }
     <button class="modal-close" onclick="closePricing()">✕</button>
     <div class="modal-title">プランを選択</div>
     <div class="pricing-grid">
-      <div class="pricing-card">
+      <div class="pricing-card" id="pricing-card-free">
+        <div class="pricing-plan">Free</div>
+        <div class="pricing-price">¥0</div>
+        <div class="pricing-period">ずっと無料</div>
+        <ul class="pricing-features">
+          <li>フロー 2 個まで</li>
+          <li>実行 50 回/月</li>
+          <li>接続 2 サービス</li>
+          <li>全テンプレート利用可</li>
+        </ul>
+        <button class="btn-s" style="width:100%" id="pricing-btn-free" disabled>現在のプラン</button>
+      </div>
+      <div class="pricing-card" id="pricing-card-starter">
         <div class="pricing-plan">Starter</div>
         <div class="pricing-price">¥9,800</div>
         <div class="pricing-period">/ 月</div>
@@ -1318,9 +1348,9 @@ select.form-input { cursor: pointer; }
           <li>接続 3 サービス</li>
           <li>メールサポート</li>
         </ul>
-        <button class="btn-p" style="width:100%" onclick="createCheckoutSession('starter')">選択する</button>
+        <button class="btn-p" style="width:100%" id="pricing-btn-starter" onclick="createCheckoutSession('starter')">アップグレード</button>
       </div>
-      <div class="pricing-card featured">
+      <div class="pricing-card featured" id="pricing-card-growth">
         <div class="pricing-plan rainbow-text">Growth</div>
         <div class="pricing-price">¥29,800</div>
         <div class="pricing-period">/ 月</div>
@@ -1331,9 +1361,9 @@ select.form-input { cursor: pointer; }
           <li>優先サポート</li>
           <li>カスタムテンプレート</li>
         </ul>
-        <button class="btn-p" style="width:100%" onclick="createCheckoutSession('growth')">選択する</button>
+        <button class="btn-p" style="width:100%" id="pricing-btn-growth" onclick="createCheckoutSession('growth')">アップグレード</button>
       </div>
-      <div class="pricing-card">
+      <div class="pricing-card" id="pricing-card-enterprise">
         <div class="pricing-plan">Enterprise</div>
         <div class="pricing-price" style="font-size:22px">要問い合わせ</div>
         <div class="pricing-period">カスタム</div>
@@ -1344,7 +1374,7 @@ select.form-input { cursor: pointer; }
           <li>SLA 保証</li>
           <li>専任サポート</li>
         </ul>
-        <button class="btn-s" style="width:100%" onclick="window.open('mailto:sales@myriagon.io')">お問い合わせ</button>
+        <button class="btn-s" style="width:100%" onclick="window.open('mailto:support@myriagon.app')">お問い合わせ</button>
       </div>
     </div>
   </div>
@@ -1666,15 +1696,23 @@ async function loadUserTenant() {
       if (tenantData) {
         var badge = document.getElementById('plan-badge');
         if (badge) {
-          var planName = tenantData.plan || 'starter';
+          var planName = tenantData.plan || 'free';
           badge.textContent = planName.charAt(0).toUpperCase() + planName.slice(1);
-          if (planName === 'growth') {
+          if (planName === 'free') {
+            badge.style.background = 'var(--bg2)';
+            badge.style.color = 'var(--text2)';
+          } else if (planName === 'starter') {
+            badge.style.background = 'rgba(59,130,246,0.12)';
+            badge.style.color = '#60a5fa';
+          } else if (planName === 'growth') {
             badge.style.background = 'linear-gradient(90deg,rgba(168,85,247,0.15),rgba(59,130,246,0.15))';
             badge.style.color = '#a78bfa';
           } else if (planName === 'enterprise') {
             badge.style.background = 'rgba(255,211,42,0.1)';
             badge.style.color = '#ffd32a';
           }
+          // Update pricing modal buttons based on current plan
+          updatePricingButtons(planName);
         }
       }
     } else {
@@ -2506,6 +2544,31 @@ async function createKnowledgeBase() {
 // Stripe Pricing
 // ═══════════════════════════════════════════
 function openPricing() { document.getElementById('pricing-modal').classList.remove('hidden'); }
+function updatePricingButtons(currentPlan) {
+  var plans = ['free', 'starter', 'growth', 'enterprise'];
+  var currentIdx = plans.indexOf(currentPlan);
+  plans.forEach(function(p, idx) {
+    var btn = document.getElementById('pricing-btn-' + p);
+    if (!btn) return;
+    if (idx === currentIdx) {
+      btn.textContent = '現在のプラン';
+      btn.disabled = true;
+      btn.className = 'btn-s';
+      btn.style.width = '100%';
+      btn.onclick = null;
+    } else if (idx < currentIdx) {
+      btn.textContent = 'ダウングレード';
+      btn.disabled = true;
+      btn.className = 'btn-s';
+      btn.style.width = '100%';
+    } else {
+      btn.textContent = 'アップグレード';
+      btn.disabled = false;
+      btn.className = 'btn-p';
+      btn.style.width = '100%';
+    }
+  });
+}
 function closePricing() { document.getElementById('pricing-modal').classList.add('hidden'); }
 
 async function createCheckoutSession(plan) {

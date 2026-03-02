@@ -5,11 +5,12 @@ export interface AuthContext {
   supabase: SupabaseClient;
   userId: string;
   tenantId: string;
-  plan: "starter" | "growth" | "enterprise";
+  plan: "free" | "starter" | "growth" | "enterprise";
 }
 
 // ─── Plan Limits ─────────────────────────────────────────────
 export const PLAN_LIMITS: Record<string, { maxWorkflows: number; maxExecutionsPerMonth: number; maxServices: number }> = {
+  free:       { maxWorkflows: 2,       maxExecutionsPerMonth: 50,    maxServices: 2 },
   starter:    { maxWorkflows: 5,       maxExecutionsPerMonth: 1000,  maxServices: 3 },
   growth:     { maxWorkflows: Infinity, maxExecutionsPerMonth: 10000, maxServices: Infinity },
   enterprise: { maxWorkflows: Infinity, maxExecutionsPerMonth: Infinity, maxServices: Infinity },
@@ -78,7 +79,7 @@ export async function authenticate(req: Request): Promise<AuthContext> {
     .eq("id", userData.tenant_id)
     .single();
 
-  const plan = (tenant?.plan || "starter") as AuthContext["plan"];
+  const plan = (tenant?.plan || "free") as AuthContext["plan"];
 
   return { supabase, userId: user.id, tenantId: userData.tenant_id, plan };
 }
