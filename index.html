@@ -8,6 +8,49 @@
 <meta name="keywords" content="AI,ワークフロー,自動化,ノーコード,業務効率化,Gmail,Slack,Google Sheets">
 <meta name="author" content="Amorphous Inc.">
 <meta name="robots" content="index, follow">
+<link rel="canonical" href="https://myriagon.app/">
+<!-- JSON-LD Structured Data -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "MYRIAGON",
+  "description": "Gmail、Slack、Google Sheetsなど50以上のサービスをAIで繋いで業務を自動化。テンプレートを選ぶだけでノーコードでワークフローが完成します。",
+  "url": "https://myriagon.app",
+  "applicationCategory": "BusinessApplication",
+  "operatingSystem": "Web",
+  "author": {
+    "@type": "Organization",
+    "name": "Amorphous Inc."
+  },
+  "offers": [
+    {
+      "@type": "Offer",
+      "name": "Starter",
+      "price": "9800",
+      "priceCurrency": "JPY",
+      "priceSpecification": {
+        "@type": "UnitPriceSpecification",
+        "price": "9800",
+        "priceCurrency": "JPY",
+        "billingDuration": "P1M"
+      }
+    },
+    {
+      "@type": "Offer",
+      "name": "Growth",
+      "price": "29800",
+      "priceCurrency": "JPY",
+      "priceSpecification": {
+        "@type": "UnitPriceSpecification",
+        "price": "29800",
+        "priceCurrency": "JPY",
+        "billingDuration": "P1M"
+      }
+    }
+  ]
+}
+</script>
 <!-- OGP -->
 <meta property="og:title" content="MYRIAGON - AIワークフロー自動化プラットフォーム">
 <meta property="og:description" content="あらゆるサービスをAIで繋いで業務を自動化。テンプレートを選ぶだけで完成。">
@@ -15,17 +58,20 @@
 <meta property="og:url" content="https://myriagon.app">
 <meta property="og:site_name" content="MYRIAGON">
 <meta property="og:locale" content="ja_JP">
-<meta property="og:image" content="https://myriagon.app/og-image.svg">
+<meta property="og:image" content="https://myriagon.app/og-image.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <!-- Twitter Card -->
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="MYRIAGON - AIワークフロー自動化">
 <meta name="twitter:description" content="50以上のサービスをAIで繋いで業務を自動化。ノーコードで完成。">
-<meta name="twitter:image" content="https://myriagon.app/og-image.svg">
+<meta name="twitter:image" content="https://myriagon.app/og-image.png">
 <!-- Favicon -->
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%23a855f7'/%3E%3Cstop offset='100%25' stop-color='%233b82f6'/%3E%3C/linearGradient%3E%3C/defs%3E%3Ccircle cx='32' cy='32' r='30' fill='%23070809' stroke='url(%23g)' stroke-width='3'/%3E%3Ctext x='32' y='44' text-anchor='middle' font-size='32' font-weight='bold' fill='url(%23g)' font-family='sans-serif'%3EM%3C/text%3E%3C/svg%3E">
-<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='40' fill='%23070809'/%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%23a855f7'/%3E%3Cstop offset='100%25' stop-color='%233b82f6'/%3E%3C/linearGradient%3E%3C/defs%3E%3Ctext x='90' y='125' text-anchor='middle' font-size='100' font-weight='bold' fill='url(%23g)' font-family='sans-serif'%3EM%3C/text%3E%3C/svg%3E">
+
+<link rel="apple-touch-icon" sizes="192x192" href="/icon-192.png">
+<!-- PWA Manifest -->
+<link rel="manifest" href="/manifest.json">
 <!-- Theme -->
 <meta name="theme-color" content="#070809">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1348,7 +1394,7 @@ select.form-input { cursor: pointer; }
     <span class="nav-link" onclick="showPage('templates')">テンプレート</span>
     <span class="nav-link" onclick="showPage('history')">実行履歴</span>
   </div>
-  <span class="nav-link" onclick="openPricing()" style="color:var(--text2);font-size:12px;">プラン</span>
+  <span class="nav-link" onclick="openPricing()" style="color:var(--text2);font-size:12px;">プラン <span id="plan-badge" style="display:inline-block;font-size:10px;padding:2px 7px;border-radius:4px;background:var(--bg2);color:var(--text1);margin-left:4px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;vertical-align:middle;"></span></span>
   <div class="nav-avatar" id="nav-avatar" onclick="handleAvatarClick()">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
       <circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
@@ -1607,6 +1653,22 @@ async function loadUserTenant() {
     const { data, error } = await supabase.from('users').select('tenant_id').eq('auth_uid', currentUser.id).single();
     if (data) {
       currentTenantId = data.tenant_id;
+      // Fetch and display current plan
+      const { data: tenantData } = await supabase.from('tenants').select('plan').eq('id', data.tenant_id).single();
+      if (tenantData) {
+        var badge = document.getElementById('plan-badge');
+        if (badge) {
+          var planName = tenantData.plan || 'starter';
+          badge.textContent = planName.charAt(0).toUpperCase() + planName.slice(1);
+          if (planName === 'growth') {
+            badge.style.background = 'linear-gradient(90deg,rgba(168,85,247,0.15),rgba(59,130,246,0.15))';
+            badge.style.color = '#a78bfa';
+          } else if (planName === 'enterprise') {
+            badge.style.background = 'rgba(255,211,42,0.1)';
+            badge.style.color = '#ffd32a';
+          }
+        }
+      }
     } else {
       // Auto-provision: user exists in auth but not in users table
       // (e.g. signed up before auto-tenant trigger was deployed)
