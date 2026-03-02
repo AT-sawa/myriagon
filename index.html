@@ -1472,7 +1472,6 @@ select.form-input { cursor: pointer; }
         <div class="tpl-title" id="tpl-title"></div>
         <div class="tpl-btns">
           <button class="btn-p" id="tpl-use-btn" onclick="openWizardForCurrent()">無料で使う</button>
-          <button class="btn-s" onclick="previewWorkflow()">プレビュー</button>
         </div>
         <div class="sec-head">概要</div>
         <div class="tpl-desc" id="tpl-desc"></div>
@@ -1826,6 +1825,20 @@ function showTemplateDetail(id) {
     '<div class="ni"><div class="ni-ico"><img src="' + svcIcon(friendlyStepType(n.type)) + '" alt=""></div>' +
     '<span class="ni-name">' + escapeHtml(n.name || friendlyStepLabel(n.type)) + '</span><span class="ni-type">' + escapeHtml(friendlyStepLabel(n.type)) + '</span></div>'
   ).join('') || '<div style="color:var(--text2);font-size:12px">フロー情報なし</div>';
+  // Auto-render workflow preview
+  var previewEl = document.getElementById('tpl-wf-preview');
+  if (nodes.length > 0) {
+    previewEl.innerHTML = nodes.map(n => {
+      var name = escapeHtml(n.name || friendlyStepLabel(n.type));
+      var label = escapeHtml(friendlyStepLabel(n.type));
+      return '<div style="display:inline-flex;align-items:center;gap:8px;padding:8px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r-sm);margin:4px;font-size:12px">' +
+        '<img src="' + svcIcon(friendlyStepType(n.type)) + '" style="width:18px;height:18px">' +
+        '<div><div style="font-weight:500;color:var(--text0)">' + name + '</div>' +
+        '<div style="color:var(--text2);font-size:10px">' + label + '</div></div></div>';
+    }).join('<span style="color:var(--text2);margin:0 2px">&#x2192;</span>');
+  } else {
+    previewEl.innerHTML = '';
+  }
   showPage('template-detail');
 }
 
