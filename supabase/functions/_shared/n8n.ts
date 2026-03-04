@@ -80,9 +80,18 @@ export function buildN8nCredData(
   tokens: Record<string, unknown>
 ): Record<string, unknown> {
   if (["gmail", "google_sheets", "google_drive"].includes(serviceName)) {
+    const SCOPE_MAP: Record<string, string> = {
+      gmail: "https://www.googleapis.com/auth/gmail.modify",
+      google_sheets: "https://www.googleapis.com/auth/spreadsheets",
+      google_drive: "https://www.googleapis.com/auth/drive",
+    };
     return {
       clientId: Deno.env.get("GOOGLE_CLIENT_ID") || "",
       clientSecret: Deno.env.get("GOOGLE_CLIENT_SECRET") || "",
+      serverUrl: "https://oauth2.googleapis.com",
+      scope: SCOPE_MAP[serviceName] || "",
+      sendAdditionalBodyProperties: false,
+      additionalBodyProperties: "",
       oauthTokenData: {
         access_token: tokens.access_token,
         refresh_token: tokens.refresh_token,
