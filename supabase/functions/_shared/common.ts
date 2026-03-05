@@ -11,7 +11,7 @@ export interface AuthContext {
 // ─── Plan Limits ─────────────────────────────────────────────
 export const PLAN_LIMITS: Record<string, { maxWorkflows: number; maxExecutionsPerMonth: number; maxServices: number }> = {
   free:       { maxWorkflows: 2,       maxExecutionsPerMonth: 50,    maxServices: 2 },
-  starter:    { maxWorkflows: 5,       maxExecutionsPerMonth: 1000,  maxServices: 3 },
+  starter:    { maxWorkflows: 5,       maxExecutionsPerMonth: 1000,  maxServices: 5 },
   growth:     { maxWorkflows: Infinity, maxExecutionsPerMonth: 10000, maxServices: Infinity },
   enterprise: { maxWorkflows: Infinity, maxExecutionsPerMonth: Infinity, maxServices: Infinity },
 };
