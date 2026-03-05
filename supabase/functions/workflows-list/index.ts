@@ -40,8 +40,13 @@ serve(async (req) => {
       });
     }
 
-    // Get workflows with template info
-    const { data: workflows, error } = await supabase
+    // Use service client to bypass RLS for the join query (tenant_id already verified)
+    const serviceClient = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
+
+    const { data: workflows, error } = await serviceClient
       .from("workflows")
       .select("*, templates(title, services, description)")
       .eq("tenant_id", userData.tenant_id)
@@ -53,12 +58,6 @@ serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-
-    // Sync with n8n API for status updates
-    const serviceClient = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
     const { data: vaultData } = await serviceClient.rpc("vault_read", {
       secret_name: "n8n_api_key",
     });
