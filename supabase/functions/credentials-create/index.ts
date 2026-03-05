@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { authenticate, corsHeaders, errorResponse, jsonResponse, PLAN_LIMITS } from "../_shared/common.ts";
 import { encryptTokens, bytesToHex } from "../_shared/crypto.ts";
-import { getN8nConfig, createN8nCredential, N8N_CRED_TYPE_MAP, buildN8nCredData } from "../_shared/n8n.ts";
+import { getN8nConfig, createN8nCredential, updateN8nCredential, N8N_CRED_TYPE_MAP, buildN8nCredData } from "../_shared/n8n.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 serve(async (req) => {
@@ -31,9 +31,27 @@ serve(async (req) => {
       .eq("tenant_id", ctx.tenantId)
       .eq("status", "connected");
 
-    // Google OAuth creates 3 services at once, so check if adding would exceed
-    const adding = (service_name === "google" && body.provider_token) ? 3 : 1;
-    if ((credCount || 0) + adding > limits.maxServices) {
+    // Google OAuth creates 3 services at once; count how many are truly NEW (not upsert)
+    const isGoogle = service_name === "google" && body.provider_token;
+    let newCount = 0;
+    if (isGoogle) {
+      const { count: existingGoogle } = await serviceClient
+        .from("credentials")
+        .select("id", { count: "exact", head: true })
+        .eq("tenant_id", ctx.tenantId)
+        .in("service_name", ["gmail", "google_sheets", "google_drive"])
+        .eq("status", "connected");
+      newCount = 3 - (existingGoogle || 0); // only count truly new services
+    } else {
+      const { count: existingService } = await serviceClient
+        .from("credentials")
+        .select("id", { count: "exact", head: true })
+        .eq("tenant_id", ctx.tenantId)
+        .eq("service_name", service_name)
+        .eq("status", "connected");
+      newCount = (existingService || 0) > 0 ? 0 : 1; // 0 if reconnecting
+    }
+    if ((credCount || 0) + newCount > limits.maxServices) {
       return jsonResponse({
         error: `${ctx.plan}プランの接続サービス上限（${limits.maxServices}個）に達しています。プランをアップグレードしてください。`,
         code: "PLAN_LIMIT",
@@ -61,21 +79,42 @@ serve(async (req) => {
 
       const { apiKey: n8nApiKey, baseUrl: n8nBaseUrl } = await getN8nConfig();
 
-      // Create credentials for all 3 Google services
+      // Create/update credentials for all 3 Google services
       const googleServices = ["gmail", "google_sheets", "google_drive"];
       for (const svcName of googleServices) {
         const n8nCredType = N8N_CRED_TYPE_MAP[svcName] || svcName;
         const n8nCredData = buildN8nCredData(svcName, tokens);
         const n8nCredName = `tenant_${ctx.tenantId}_${svcName}`;
 
-        let n8nCredId = "";
-        try {
-          const n8nCred = await createN8nCredential(
-            n8nApiKey, n8nBaseUrl, n8nCredName, n8nCredType, n8nCredData
-          );
-          n8nCredId = String(n8nCred.id);
-        } catch (e) {
-          console.warn(`n8n credential for ${svcName} skipped:`, (e as Error).message);
+        // Check for existing n8n credential
+        const { data: existingCred } = await serviceClient
+          .from("credentials")
+          .select("n8n_credential_id")
+          .eq("tenant_id", ctx.tenantId)
+          .eq("service_name", svcName)
+          .single();
+
+        let n8nCredId = existingCred?.n8n_credential_id || "";
+
+        if (n8nCredId) {
+          try {
+            await updateN8nCredential(n8nApiKey, n8nBaseUrl, n8nCredId, n8nCredName, n8nCredType, n8nCredData);
+          } catch (e) {
+            console.warn(`n8n credential update for ${svcName} failed, trying create:`, (e as Error).message);
+            try {
+              const n8nCred = await createN8nCredential(n8nApiKey, n8nBaseUrl, n8nCredName, n8nCredType, n8nCredData);
+              n8nCredId = String(n8nCred.id);
+            } catch (e2) {
+              console.error(`n8n credential create also failed for ${svcName}:`, (e2 as Error).message);
+            }
+          }
+        } else {
+          try {
+            const n8nCred = await createN8nCredential(n8nApiKey, n8nBaseUrl, n8nCredName, n8nCredType, n8nCredData);
+            n8nCredId = String(n8nCred.id);
+          } catch (e) {
+            console.error(`n8n credential creation failed for ${svcName}:`, (e as Error).message);
+          }
         }
 
         await serviceClient
