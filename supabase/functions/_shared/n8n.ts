@@ -155,6 +155,13 @@ export function buildN8nCredData(
       apiKey: (tokens.api_key || tokens.access_token) as string,
     };
   }
+  if (serviceName === "supabase") {
+    // supabaseApi schema: host, serviceRole
+    return {
+      host: Deno.env.get("SUPABASE_URL") || "",
+      serviceRole: (tokens.api_key || tokens.access_token) as string,
+    };
+  }
   // API key services (fallback)
   return { apiKey: tokens.api_key };
 }

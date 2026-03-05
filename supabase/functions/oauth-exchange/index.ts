@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { authenticate, corsHeaders, errorResponse, jsonResponse } from "../_shared/common.ts";
 import { encryptTokens, bytesToHex } from "../_shared/crypto.ts";
-import { getN8nConfig, createN8nCredential, N8N_CRED_TYPE_MAP, buildN8nCredData } from "../_shared/n8n.ts";
+import { getN8nConfig, createN8nCredential, updateN8nCredential, N8N_CRED_TYPE_MAP, buildN8nCredData } from "../_shared/n8n.ts";
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -223,14 +223,35 @@ serve(async (req) => {
       const n8nCredData = buildN8nCredData(svcName, tokens);
       const n8nCredName = `tenant_${stateRow.tenant_id}_${svcName}`;
 
-      let n8nCredId = "";
-      try {
-        const n8nCred = await createN8nCredential(
-          n8nApiKey, n8nBaseUrl, n8nCredName, n8nCredType, n8nCredData
-        );
-        n8nCredId = String(n8nCred.id);
-      } catch (e) {
-        console.warn(`n8n credential for ${svcName} skipped:`, (e as Error).message);
+      // Check for existing n8n credential
+      const { data: existingCred } = await serviceClient
+        .from("credentials")
+        .select("n8n_credential_id")
+        .eq("tenant_id", stateRow.tenant_id)
+        .eq("service_name", svcName)
+        .single();
+
+      let n8nCredId = existingCred?.n8n_credential_id || "";
+
+      if (n8nCredId) {
+        try {
+          await updateN8nCredential(n8nApiKey, n8nBaseUrl, n8nCredId, n8nCredName, n8nCredType, n8nCredData);
+        } catch (e) {
+          console.warn(`n8n update failed for ${svcName}, trying create:`, (e as Error).message);
+          try {
+            const n8nCred = await createN8nCredential(n8nApiKey, n8nBaseUrl, n8nCredName, n8nCredType, n8nCredData);
+            n8nCredId = String(n8nCred.id);
+          } catch (e2) {
+            console.error(`n8n create also failed for ${svcName}:`, (e2 as Error).message);
+          }
+        }
+      } else {
+        try {
+          const n8nCred = await createN8nCredential(n8nApiKey, n8nBaseUrl, n8nCredName, n8nCredType, n8nCredData);
+          n8nCredId = String(n8nCred.id);
+        } catch (e) {
+          console.error(`n8n credential creation failed for ${svcName}:`, (e as Error).message);
+        }
       }
 
       await serviceClient
