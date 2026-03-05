@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { encryptTokens, bytesToHex } from "../_shared/crypto.ts";
-import { getN8nConfig, createN8nCredential, N8N_CRED_TYPE_MAP, buildN8nCredData } from "../_shared/n8n.ts";
+import { getN8nConfig, createN8nCredential, updateN8nCredential, N8N_CRED_TYPE_MAP, buildN8nCredData } from "../_shared/n8n.ts";
 
 const FRONTEND_ORIGIN = Deno.env.get("FRONTEND_URL") || "https://myriagon.app";
 
@@ -270,15 +270,47 @@ serve(async (req) => {
       const n8nCredData = buildN8nCredData(svcName, tokens);
       const n8nCredName = `tenant_${stateRow.tenant_id}_${svcName}`;
 
-      // Try to create n8n credential
-      let n8nCredId = "";
-      try {
-        const n8nCred = await createN8nCredential(
-          n8nApiKey, n8nBaseUrl, n8nCredName, n8nCredType, n8nCredData
-        );
-        n8nCredId = String(n8nCred.id);
-      } catch (e) {
-        console.warn(`n8n credential creation for ${svcName} failed (may already exist):`, (e as Error).message);
+      // Check if there's an existing n8n_credential_id in the DB
+      const { data: existingCred } = await serviceClient
+        .from("credentials")
+        .select("n8n_credential_id")
+        .eq("tenant_id", stateRow.tenant_id)
+        .eq("service_name", svcName)
+        .single();
+
+      let n8nCredId = existingCred?.n8n_credential_id || "";
+
+      if (n8nCredId) {
+        // Update existing n8n credential
+        try {
+          await updateN8nCredential(
+            n8nApiKey, n8nBaseUrl, n8nCredId, n8nCredName, n8nCredType, n8nCredData
+          );
+          console.log(`n8n credential updated for ${svcName}: ${n8nCredId}`);
+        } catch (e) {
+          console.warn(`n8n credential update for ${svcName} failed, trying create:`, (e as Error).message);
+          // Update failed (maybe credential was deleted), try creating a new one
+          try {
+            const n8nCred = await createN8nCredential(
+              n8nApiKey, n8nBaseUrl, n8nCredName, n8nCredType, n8nCredData
+            );
+            n8nCredId = String(n8nCred.id);
+            console.log(`n8n credential created for ${svcName}: ${n8nCredId}`);
+          } catch (e2) {
+            console.error(`n8n credential create also failed for ${svcName}:`, (e2 as Error).message);
+          }
+        }
+      } else {
+        // No existing credential, create new one
+        try {
+          const n8nCred = await createN8nCredential(
+            n8nApiKey, n8nBaseUrl, n8nCredName, n8nCredType, n8nCredData
+          );
+          n8nCredId = String(n8nCred.id);
+          console.log(`n8n credential created for ${svcName}: ${n8nCredId}`);
+        } catch (e) {
+          console.error(`n8n credential creation failed for ${svcName}:`, (e as Error).message);
+        }
       }
 
       // Upsert to credentials table

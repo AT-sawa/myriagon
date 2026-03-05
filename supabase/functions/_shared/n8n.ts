@@ -80,18 +80,61 @@ export function buildN8nCredData(
   tokens: Record<string, unknown>
 ): Record<string, unknown> {
   if (["gmail", "google_sheets", "google_drive"].includes(serviceName)) {
-    const SCOPE_MAP: Record<string, string> = {
-      gmail: "https://www.googleapis.com/auth/gmail.modify",
-      google_sheets: "https://www.googleapis.com/auth/spreadsheets",
-      google_drive: "https://www.googleapis.com/auth/drive",
-    };
-    return {
+    const baseData: Record<string, unknown> = {
       clientId: Deno.env.get("GOOGLE_CLIENT_ID") || "",
       clientSecret: Deno.env.get("GOOGLE_CLIENT_SECRET") || "",
       serverUrl: "https://oauth2.googleapis.com",
-      scope: SCOPE_MAP[serviceName] || "",
       sendAdditionalBodyProperties: false,
-      additionalBodyProperties: "",
+      additionalBodyProperties: "{}",
+      oauthTokenData: {
+        access_token: tokens.access_token,
+        refresh_token: tokens.refresh_token,
+        token_type: tokens.token_type || "Bearer",
+        expires_in: tokens.expires_in,
+      },
+    };
+    // googleOAuth2Api (gmail) has a scope field; googleSheetsOAuth2Api and googleDriveOAuth2Api do not
+    if (serviceName === "gmail") {
+      baseData.scope = "https://www.googleapis.com/auth/gmail.modify";
+    }
+    return baseData;
+  }
+  if (serviceName === "slack") {
+    // slackOAuth2Api schema: serverUrl, clientId, clientSecret, sendAdditionalBodyProperties, additionalBodyProperties, oauthTokenData
+    return {
+      clientId: Deno.env.get("SLACK_CLIENT_ID") || "",
+      clientSecret: Deno.env.get("SLACK_CLIENT_SECRET") || "",
+      serverUrl: "https://slack.com",
+      sendAdditionalBodyProperties: false,
+      additionalBodyProperties: "{}",
+      oauthTokenData: {
+        access_token: tokens.access_token,
+        token_type: tokens.token_type || "Bearer",
+      },
+    };
+  }
+  if (serviceName === "notion") {
+    // notionOAuth2Api schema: serverUrl, clientId, clientSecret, sendAdditionalBodyProperties, additionalBodyProperties, oauthTokenData
+    return {
+      clientId: Deno.env.get("NOTION_CLIENT_ID") || "",
+      clientSecret: Deno.env.get("NOTION_CLIENT_SECRET") || "",
+      serverUrl: "https://api.notion.com",
+      sendAdditionalBodyProperties: false,
+      additionalBodyProperties: "{}",
+      oauthTokenData: {
+        access_token: tokens.access_token,
+        token_type: tokens.token_type || "Bearer",
+      },
+    };
+  }
+  if (serviceName === "hubspot") {
+    // hubspotOAuth2Api schema: serverUrl, clientId, clientSecret, sendAdditionalBodyProperties, additionalBodyProperties, oauthTokenData
+    return {
+      clientId: Deno.env.get("HUBSPOT_CLIENT_ID") || "",
+      clientSecret: Deno.env.get("HUBSPOT_CLIENT_SECRET") || "",
+      serverUrl: "https://api.hubapi.com",
+      sendAdditionalBodyProperties: false,
+      additionalBodyProperties: "{}",
       oauthTokenData: {
         access_token: tokens.access_token,
         refresh_token: tokens.refresh_token,
@@ -100,27 +143,16 @@ export function buildN8nCredData(
       },
     };
   }
-  if (serviceName === "slack") {
-    return {
-      accessToken: tokens.access_token,
-    };
-  }
-  if (serviceName === "notion") {
-    return {
-      apiKey: tokens.access_token,
-    };
-  }
-  if (serviceName === "hubspot") {
-    return {
-      accessToken: tokens.access_token,
-      refreshToken: tokens.refresh_token,
-      clientId: Deno.env.get("HUBSPOT_CLIENT_ID") || "",
-      clientSecret: Deno.env.get("HUBSPOT_CLIENT_SECRET") || "",
-    };
-  }
   if (serviceName === "stripe") {
+    // stripeApi schema: secretKey, signatureSecret
     return {
-      apiKey: tokens.access_token,
+      secretKey: tokens.access_token as string,
+    };
+  }
+  if (serviceName === "openai") {
+    // openAiApi schema: apiKey, organizationId, url
+    return {
+      apiKey: (tokens.api_key || tokens.access_token) as string,
     };
   }
   // API key services (fallback)
