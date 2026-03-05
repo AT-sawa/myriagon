@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 // n8n クレデンシャルタイプのマッピング
 export const N8N_CRED_TYPE_MAP: Record<string, string> = {
-  gmail: "googleOAuth2Api",
+  gmail: "gmailOAuth2",
   google_sheets: "googleSheetsOAuth2Api",
   google_drive: "googleDriveOAuth2Api",
   slack: "slackOAuth2Api",
@@ -93,10 +93,6 @@ export function buildN8nCredData(
         expires_in: tokens.expires_in,
       },
     };
-    // googleOAuth2Api (gmail) has a scope field; googleSheetsOAuth2Api and googleDriveOAuth2Api do not
-    if (serviceName === "gmail") {
-      baseData.scope = "https://www.googleapis.com/auth/gmail.modify";
-    }
     return baseData;
   }
   if (serviceName === "slack") {

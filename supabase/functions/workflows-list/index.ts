@@ -58,32 +58,36 @@ serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    const { data: vaultData } = await serviceClient.rpc("vault_read", {
-      secret_name: "n8n_api_key",
-    });
-    const n8nApiKey = vaultData?.[0]?.secret || Deno.env.get("N8N_API_KEY");
-    const n8nBaseUrl = Deno.env.get("N8N_BASE_URL") || "https://api.n8n.cloud/api/v1";
-
-    for (const wf of workflows || []) {
-      if (!wf.n8n_workflow_id) continue;
-      try {
-        const res = await fetch(`${n8nBaseUrl}/workflows/${wf.n8n_workflow_id}`, {
-          headers: { "X-N8N-API-KEY": n8nApiKey! },
-        });
-        if (res.ok) {
-          const n8nWf = await res.json();
-          const newStatus = n8nWf.active ? "active" : "inactive";
-          if (newStatus !== wf.status) {
-            await supabase
-              .from("workflows")
-              .update({ status: newStatus })
-              .eq("id", wf.id);
-            wf.status = newStatus;
+    // Sync with n8n (best-effort, don't block response)
+    try {
+      const n8nApiKey = Deno.env.get("N8N_API_KEY") || "";
+      const n8nBaseUrl = Deno.env.get("N8N_BASE_URL") || "";
+      if (n8nApiKey && n8nBaseUrl) {
+        for (const wf of workflows || []) {
+          if (!wf.n8n_workflow_id) continue;
+          try {
+            const res = await fetch(`${n8nBaseUrl}/workflows/${wf.n8n_workflow_id}`, {
+              headers: { "X-N8N-API-KEY": n8nApiKey },
+              signal: AbortSignal.timeout(3000),
+            });
+            if (res.ok) {
+              const n8nWf = await res.json();
+              const newStatus = n8nWf.active ? "active" : "inactive";
+              if (newStatus !== wf.status) {
+                await serviceClient
+                  .from("workflows")
+                  .update({ status: newStatus })
+                  .eq("id", wf.id);
+                wf.status = newStatus;
+              }
+            }
+          } catch {
+            // n8n unreachable for this workflow — skip
           }
         }
-      } catch {
-        // n8n unreachable — keep local status
       }
+    } catch (syncErr) {
+      console.warn("n8n sync skipped:", (syncErr as Error).message);
     }
 
     return new Response(JSON.stringify(workflows), {
