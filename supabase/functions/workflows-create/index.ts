@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { N8N_CRED_TYPE_MAP, getN8nConfig } from "../_shared/n8n.ts";
+import { N8N_CRED_TYPE_MAP, NODE_TYPE_TO_SERVICE, getN8nConfig } from "../_shared/n8n.ts";
 import { PLAN_LIMITS } from "../_shared/common.ts";
 
 const ALLOWED_ORIGIN = Deno.env.get("FRONTEND_URL") || "https://myriagon.app";
@@ -9,22 +9,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Map n8n node types to the service names in our credentials table
-const NODE_TYPE_TO_SERVICE: Record<string, string> = {
-  "n8n-nodes-base.gmail": "gmail",
-  "n8n-nodes-base.googleSheets": "google_sheets",
-  "n8n-nodes-base.googleDrive": "google_drive",
-  "n8n-nodes-base.slack": "slack",
-  "n8n-nodes-base.openAi": "openai",
-  "@n8n/n8n-nodes-langchain.lmChatOpenAi": "openai",
-  "@n8n/n8n-nodes-langchain.lmOpenAi": "openai",
-  "n8n-nodes-base.anthropic": "anthropic",
-  "@n8n/n8n-nodes-langchain.lmChatAnthropic": "anthropic",
-  "n8n-nodes-base.notion": "notion",
-  "n8n-nodes-base.hubspot": "hubspot",
-  "n8n-nodes-base.stripe": "stripe",
-  "n8n-nodes-base.supabase": "supabase",
-};
+// NODE_TYPE_TO_SERVICE is imported from _shared/n8n.ts
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -189,6 +174,42 @@ serve(async (req) => {
       return node;
     });
 
+    // 3.7 Auto-inject webhook trigger for manual execution
+    const hasWebhook = nodes.some((n: Record<string, unknown>) =>
+      (n.type as string)?.includes("webhook")
+    );
+    if (!hasWebhook) {
+      const triggerNode = nodes.find((n: Record<string, unknown>) => {
+        const t = n.type as string;
+        return t?.includes("Trigger") || t?.includes("trigger");
+      });
+      if (triggerNode) {
+        const triggerName = triggerNode.name as string;
+        const triggerConns = workflowJson.connections?.[triggerName];
+        if (triggerConns?.main?.[0]?.[0]) {
+          const nextNodeName = triggerConns.main[0][0].node;
+          const webhookPlaceholder = crypto.randomUUID().slice(0, 8);
+          nodes.push({
+            id: "webhook_auto",
+            name: "手動実行",
+            type: "n8n-nodes-base.webhook",
+            typeVersion: 2,
+            position: [-200, 500],
+            parameters: {
+              path: webhookPlaceholder,
+              httpMethod: "POST",
+              responseMode: "onReceived",
+              options: {},
+            },
+            webhookId: webhookPlaceholder,
+          } as unknown as Record<string, unknown>);
+          workflowJson.connections["手動実行"] = {
+            main: [[{ node: nextNodeName, type: "main", index: 0 }]],
+          };
+        }
+      }
+    }
+
     // 4. Create workflow in n8n
     const n8nCreateRes = await fetch(`${n8nBaseUrl}/workflows`, {
       method: "POST",
@@ -213,6 +234,24 @@ serve(async (req) => {
     }
 
     const n8nWorkflow = await n8nCreateRes.json();
+
+    // 4.5 Update webhook path to use n8n workflow ID (predictable URL)
+    const webhookNode = nodes.find((n: Record<string, unknown>) => n.id === "webhook_auto");
+    if (webhookNode) {
+      const webhookPath = `trigger-${n8nWorkflow.id}`;
+      (webhookNode.parameters as Record<string, unknown>).path = webhookPath;
+      (webhookNode as Record<string, unknown>).webhookId = webhookPath;
+      await fetch(`${n8nBaseUrl}/workflows/${n8nWorkflow.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", "X-N8N-API-KEY": n8nApiKey! },
+        body: JSON.stringify({
+          name: `${userData.tenant_id}_${template.title}`,
+          nodes,
+          connections: workflowJson.connections || {},
+          settings: workflowJson.settings || {},
+        }),
+      });
+    }
 
     // 5. Activate the workflow
     await fetch(`${n8nBaseUrl}/workflows/${n8nWorkflow.id}/activate`, {

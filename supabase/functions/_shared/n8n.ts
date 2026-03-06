@@ -1,6 +1,23 @@
 // ─── n8n API ヘルパー ──────────────────────────────────────
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+// n8n ノードタイプ → サービス名マッピング
+export const NODE_TYPE_TO_SERVICE: Record<string, string> = {
+  "n8n-nodes-base.gmail": "gmail",
+  "n8n-nodes-base.googleSheets": "google_sheets",
+  "n8n-nodes-base.googleDrive": "google_drive",
+  "n8n-nodes-base.slack": "slack",
+  "n8n-nodes-base.openAi": "openai",
+  "@n8n/n8n-nodes-langchain.lmChatOpenAi": "openai",
+  "@n8n/n8n-nodes-langchain.lmOpenAi": "openai",
+  "n8n-nodes-base.anthropic": "anthropic",
+  "@n8n/n8n-nodes-langchain.lmChatAnthropic": "anthropic",
+  "n8n-nodes-base.notion": "notion",
+  "n8n-nodes-base.hubspot": "hubspot",
+  "n8n-nodes-base.stripe": "stripe",
+  "n8n-nodes-base.supabase": "supabase",
+};
+
 // n8n クレデンシャルタイプのマッピング
 export const N8N_CRED_TYPE_MAP: Record<string, string> = {
   gmail: "gmailOAuth2",
@@ -80,6 +97,11 @@ export function buildN8nCredData(
   tokens: Record<string, unknown>
 ): Record<string, unknown> {
   if (["gmail", "google_sheets", "google_drive"].includes(serviceName)) {
+    // Calculate expiry_date: if obtained_at exists, add expires_in (default 3600s)
+    const obtainedAt = tokens.obtained_at ? new Date(tokens.obtained_at as string).getTime() : Date.now();
+    const expiresIn = Number(tokens.expires_in) || 3600;
+    const expiryDate = obtainedAt + expiresIn * 1000;
+
     const baseData: Record<string, unknown> = {
       clientId: Deno.env.get("GOOGLE_CLIENT_ID") || "",
       clientSecret: Deno.env.get("GOOGLE_CLIENT_SECRET") || "",
@@ -90,7 +112,8 @@ export function buildN8nCredData(
         access_token: tokens.access_token,
         refresh_token: tokens.refresh_token,
         token_type: tokens.token_type || "Bearer",
-        expires_in: tokens.expires_in,
+        scope: "https://www.googleapis.com/auth/gmail.modify https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive",
+        expiry_date: expiryDate,
       },
     };
     return baseData;

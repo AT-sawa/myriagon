@@ -48,7 +48,7 @@ serve(async (req) => {
 
     const { data: workflows, error } = await serviceClient
       .from("workflows")
-      .select("*, templates(title, services, description)")
+      .select("*, templates(title, services, description, parameters_schema, workflow_json)")
       .eq("tenant_id", userData.tenant_id)
       .order("created_at", { ascending: false });
 

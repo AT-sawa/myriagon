@@ -248,6 +248,7 @@ aside {
   background-size: auto, 200% auto;
   animation: rainbowShift 6s linear infinite;
   pointer-events: none;
+  z-index: -1;
 }
 
 .fc-icons { display: flex; gap: 5px; margin-bottom: 8px; align-items: center; }
@@ -348,6 +349,19 @@ main { margin-left: var(--sw); flex: 1; padding: 32px 40px; min-height: calc(100
 }
 .ask-send:hover { transform: translateY(-1px); box-shadow: 0 4px 20px rgba(120,80,255,.25); }
 .ask-send svg { color: #fff; }
+
+/* flow suggest results */
+.flow-suggest-results { padding: 20px; background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r-lg); animation: fadeUp .22s ease-out; }
+.fs-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.fs-title { font-size: 13px; font-weight: 600; color: var(--text0); }
+.fs-close { width: 24px; height: 24px; border-radius: 5px; border: 1px solid var(--border); background: var(--bg2); cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--text2); font-size: 12px; transition: all .2s; }
+.fs-close:hover { border-color: var(--border-hi); color: var(--text0); }
+.fs-suggestion { font-size: 13px; color: var(--text1); line-height: 1.65; margin-bottom: 14px; }
+.fs-reason { font-size: 11.5px; color: var(--text2); margin-top: 6px; line-height: 1.5; padding-left: 10px; border-left: 2px solid var(--border); }
+.fs-score { font-size: 10px; font-weight: 600; letter-spacing: .05em; padding: 2px 8px; border-radius: 20px; background: rgba(168,85,247,.15); color: #a855f7; margin-left: auto; }
+.fs-no-match { text-align: center; padding: 20px 0; }
+.fs-no-match p { font-size: 13px; color: var(--text1); margin-bottom: 14px; }
+.fs-loading { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--text2); padding: 16px 0; }
 
 /* section header */
 .sh { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
@@ -667,6 +681,18 @@ main { margin-left: var(--sw); flex: 1; padding: 32px 40px; min-height: calc(100
 .form-input:focus { border-color: var(--border-hi); }
 .form-input::placeholder { color: var(--text2); }
 select.form-input { cursor: pointer; }
+
+/* Schedule type tabs */
+.sched-tabs { display: flex; gap: 4px; margin-bottom: 14px; flex-wrap: wrap; }
+.sched-tab {
+  padding: 5px 14px; font-size: 12px; border-radius: 20px;
+  border: 1px solid var(--border); background: var(--bg2);
+  color: var(--text1); cursor: pointer; transition: all .2s; font-family: inherit;
+}
+.sched-tab.active {
+  background: linear-gradient(135deg, rgba(168,85,247,.2), rgba(59,130,246,.2));
+  border-color: rgba(168,85,247,.5); color: #fff;
+}
 
 /* ═══════════════════════════════════════════
    NEW: Pricing
@@ -1474,7 +1500,7 @@ select.form-input { cursor: pointer; }
   <!-- DASHBOARD -->
   <div class="page visible" id="page-dashboard">
     <div class="ask-wrap">
-      <textarea class="ask-box" placeholder="フローについて質問する、または新しいフローを作成..."></textarea>
+      <textarea class="ask-box" placeholder="やりたいことを入力してください（例: メールの添付ファイルを自動でスプレッドシートに記録したい）"></textarea>
       <div class="ask-rainbow-ring"></div>
       <button class="ask-send" onclick="sendAskQuestion()">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
@@ -1482,6 +1508,7 @@ select.form-input { cursor: pointer; }
         </svg>
       </button>
     </div>
+    <div id="flow-suggest-results" style="display:none;margin-bottom:24px"></div>
     <div class="sh">
       <span class="sh-title">おすすめフロー</span>
       <div class="sh-line"></div>
@@ -1512,6 +1539,47 @@ select.form-input { cursor: pointer; }
         <div class="wf-area">
           <div class="wf-grid"></div>
           <div class="wf" id="tpl-wf-preview"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- WORKFLOW DETAIL / EDIT -->
+  <div class="page" id="page-workflow-detail">
+    <a class="back-link" onclick="showPage('dashboard')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      ダッシュボードに戻る
+    </a>
+    <div class="tpl-layout" id="workflow-detail-content">
+      <div>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
+          <div class="tpl-title" id="wfd-title" style="margin-bottom:0"></div>
+          <span class="sbadge" id="wfd-status-badge"></span>
+        </div>
+        <div class="tpl-tags" id="wfd-tags"></div>
+        <div class="tpl-btns" style="gap:8px">
+          <button class="btn-p" id="wfd-exec-btn" onclick="executeWorkflowNow()" style="background:linear-gradient(135deg,#10b981,#059669)">今すぐ実行</button>
+          <button class="btn-s" id="wfd-toggle-btn" onclick="toggleWorkflowActive()"></button>
+          <button class="btn-s" style="color:var(--s-err);border-color:rgba(248,113,113,0.3)" onclick="confirmDeleteWorkflow()">削除</button>
+        </div>
+
+        <div class="sec-head" id="wfd-schedule-head">実行スケジュール</div>
+        <div id="wfd-schedule-form" style="margin-bottom:22px"></div>
+
+        <div class="sec-head">設定</div>
+        <div id="wfd-params-form" style="margin-bottom:22px"></div>
+
+        <div class="tpl-btns">
+          <button class="btn-p" id="wfd-save-btn" onclick="saveWorkflowChanges()">変更を保存</button>
+        </div>
+
+        <div class="sec-head" style="margin-top:20px">情報</div>
+        <div id="wfd-info" style="font-size:12px;color:var(--text2)"></div>
+      </div>
+      <div>
+        <div class="wf-area">
+          <div class="wf-grid"></div>
+          <div class="wf" id="wfd-wf-preview"></div>
         </div>
       </div>
     </div>
@@ -1766,6 +1834,7 @@ const STEP_TYPE_MAP = {
   'notion': 'notion', 'stripe': 'stripe', 'supabase': 'supabase',
   'switch': 'condition', 'webhook': 'http', 'manualTrigger': 'schedule',
   'limit': 'data', 'noOp': 'data', 'anthropic': 'anthropic',
+  'lmChatAnthropic': 'anthropic', 'chainLlm': 'anthropic',
   'shopifyTrigger': 'stripe',
 };
 const STEP_LABEL_MAP = {
@@ -1907,7 +1976,7 @@ async function loadWorkflows() {
     allWorkflows = await invokeFunction('workflows-list') || [];
   } catch (e) {
     // Fallback to direct query
-    const { data } = await supabase.from('workflows').select('*, templates(title, services, description)').order('created_at', { ascending: false });
+    const { data } = await supabase.from('workflows').select('*, templates(title, services, description, parameters_schema, workflow_json)').order('created_at', { ascending: false });
     allWorkflows = data || [];
   }
   renderSidebarFlows();
@@ -1923,11 +1992,330 @@ function renderSidebarFlows() {
     const t = w.templates || {};
     const icons = (t.services || []).map(s => '<div class="svc-ico"><img src="' + svcIcon(s) + '" alt="' + s + '"></div>').join('');
     const cls = w.status === 'inactive' ? 'fc inactive' : (i === 0 ? 'fc active' : 'fc');
-    return '<div class="' + cls + '" onclick="showTemplateDetail(\'' + (w.template_id || '') + '\')">' +
+    return '<div class="' + cls + '" onclick="showWorkflowDetail(\'' + w.id + '\')">' +
       '<div class="fc-icons">' + icons + '<div class="ico-add">+</div></div>' +
       '<div class="fc-title">' + (t.title || 'Untitled') + '</div>' +
       '<div class="fc-desc">' + (t.description || '') + '</div></div>';
   }).join('');
+}
+
+// ═══════════════════════════════════════════
+// Workflow Detail / Edit
+// ═══════════════════════════════════════════
+var currentWorkflowId = null;
+var currentWorkflowData = null;
+var currentScheduleType = 'minutes';
+
+function showWorkflowDetail(workflowId) {
+  const wf = allWorkflows.find(function(w) { return w.id === workflowId; });
+  if (!wf) { showToast('フローが見つかりません', 'error'); return; }
+  currentWorkflowId = workflowId;
+  currentWorkflowData = wf;
+  var t = wf.templates || {};
+
+  // Title
+  document.getElementById('wfd-title').textContent = t.title || 'Untitled';
+
+  // Status badge
+  var badge = document.getElementById('wfd-status-badge');
+  if (wf.status === 'active') {
+    badge.className = 'sbadge ok';
+    badge.innerHTML = '<span class="sdot"></span>有効';
+  } else {
+    badge.className = 'sbadge';
+    badge.innerHTML = '<span class="sdot"></span>無効';
+  }
+
+  // Toggle button
+  var toggleBtn = document.getElementById('wfd-toggle-btn');
+  toggleBtn.textContent = wf.status === 'active' ? '無効にする' : '有効にする';
+  toggleBtn.className = wf.status === 'active' ? 'btn-s' : 'btn-p';
+
+  // Tags
+  document.getElementById('wfd-tags').innerHTML = (t.services || []).map(function(s) {
+    return '<span class="tag">' + escapeHtml(s) + '</span>';
+  }).join('');
+
+  // Parameters form
+  renderWfdParamsForm(t.parameters_schema, wf.parameters || {});
+
+  // Schedule form
+  renderWfdScheduleForm(t.workflow_json);
+
+  // Workflow preview
+  var nodes = (t.workflow_json && t.workflow_json.nodes) || [];
+  var previewEl = document.getElementById('wfd-wf-preview');
+  if (nodes.length > 0) {
+    previewEl.innerHTML = nodes.map(function(n) {
+      var name = escapeHtml(n.name || friendlyStepLabel(n.type));
+      var label = escapeHtml(friendlyStepLabel(n.type));
+      return '<div style="display:inline-flex;align-items:center;gap:8px;padding:8px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r-sm);margin:4px;font-size:12px">' +
+        '<img src="' + svcIcon(friendlyStepType(n.type)) + '" style="width:18px;height:18px">' +
+        '<div><div style="font-weight:500;color:var(--text0)">' + name + '</div>' +
+        '<div style="color:var(--text2);font-size:10px">' + label + '</div></div></div>';
+    }).join('<span style="color:var(--text2);margin:0 2px">&#x2192;</span>');
+  } else {
+    previewEl.innerHTML = '';
+  }
+
+  // Info
+  var created = wf.created_at ? new Date(wf.created_at).toLocaleString('ja-JP') : '-';
+  document.getElementById('wfd-info').innerHTML =
+    '<div>作成日: ' + created + '</div>' +
+    '<div>テンプレート: ' + escapeHtml(t.title || '-') + '</div>' +
+    (wf.n8n_workflow_id ? '<div>n8n ID: ' + escapeHtml(wf.n8n_workflow_id) + '</div>' : '');
+
+  showPage('workflow-detail');
+}
+
+function renderWfdParamsForm(schema, currentParams) {
+  var props = (schema && (schema.properties || schema)) || {};
+  var entries = Object.entries(props);
+  if (!entries.length) {
+    document.getElementById('wfd-params-form').innerHTML =
+      '<div style="color:var(--text2);font-size:12px">設定項目はありません</div>';
+    return;
+  }
+  document.getElementById('wfd-params-form').innerHTML = entries.map(function(entry) {
+    var key = entry[0], def = entry[1];
+    var label = def.label || def.title || key;
+    var type = def.type || 'string';
+    var ph = def.placeholder || def.description || '';
+    var val = currentParams[key] || '';
+    if (type === 'select' && def.options) {
+      var opts = def.options.map(function(o) {
+        return '<option value="' + escapeHtml(o) + '"' + (val === o ? ' selected' : '') + '>' + escapeHtml(o) + '</option>';
+      }).join('');
+      return '<div class="form-group"><label class="form-label">' + escapeHtml(label) + '</label>' +
+        '<select class="form-input" data-key="' + escapeHtml(key) + '">' + opts + '</select></div>';
+    }
+    return '<div class="form-group"><label class="form-label">' + escapeHtml(label) + '</label>' +
+      '<input class="form-input" type="text" placeholder="' + escapeHtml(ph) + '" data-key="' + escapeHtml(key) + '" value="' + escapeHtml(String(val)) + '"></div>';
+  }).join('');
+}
+
+function renderWfdScheduleForm(workflowJson) {
+  var nodes = (workflowJson && workflowJson.nodes) || [];
+  var triggerNode = nodes.find(function(n) { return n.type && n.type.indexOf('scheduleTrigger') !== -1; });
+  var headEl = document.getElementById('wfd-schedule-head');
+  var formEl = document.getElementById('wfd-schedule-form');
+
+  if (!triggerNode) {
+    headEl.textContent = 'トリガー';
+    var trigType = '不明';
+    var evtNode = nodes.find(function(n) { return n.type && (n.type.indexOf('Trigger') !== -1 || n.type.indexOf('trigger') !== -1); });
+    if (evtNode) {
+      if (evtNode.type.indexOf('gmail') !== -1) trigType = 'メール受信時';
+      else if (evtNode.type.indexOf('webhook') !== -1) trigType = 'Webhook';
+      else if (evtNode.type.indexOf('slack') !== -1) trigType = 'Slackイベント';
+      else if (evtNode.type.indexOf('shopify') !== -1) trigType = 'Shopifyイベント';
+      else trigType = friendlyStepLabel(evtNode.type);
+    }
+    formEl.innerHTML = '<div style="padding:12px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r-sm);font-size:13px;color:var(--text1)">' +
+      'イベントトリガー: <strong>' + escapeHtml(trigType) + '</strong></div>';
+    return;
+  }
+
+  headEl.textContent = '実行スケジュール';
+  // Parse current schedule
+  var rule = (triggerNode.parameters && triggerNode.parameters.rule && triggerNode.parameters.rule.interval && triggerNode.parameters.rule.interval[0]) || {};
+  var schedType = 'minutes';
+  if (rule.field === 'cronExpression') schedType = 'cron';
+  else if (rule.triggerAtDay !== undefined) schedType = 'weekly';
+  else if (rule.triggerAtHour !== undefined && !rule.minutesInterval && !rule.hoursInterval) schedType = 'daily';
+  else if (rule.hoursInterval) schedType = 'hourly';
+  currentScheduleType = schedType;
+
+  var tabs = [
+    { id: 'minutes', label: '分間隔' },
+    { id: 'hourly', label: '時間間隔' },
+    { id: 'daily', label: '毎日' },
+    { id: 'weekly', label: '毎週' },
+    { id: 'cron', label: 'Cron式' }
+  ];
+  formEl.innerHTML =
+    '<div class="sched-tabs">' + tabs.map(function(t) {
+      return '<button class="sched-tab' + (t.id === schedType ? ' active' : '') + '" onclick="setWfdScheduleType(\'' + t.id + '\')">' + t.label + '</button>';
+    }).join('') + '</div>' +
+    '<div id="wfd-sched-fields"></div>';
+  renderWfdScheduleFields(schedType, rule);
+}
+
+function setWfdScheduleType(type) {
+  currentScheduleType = type;
+  document.querySelectorAll('.sched-tab').forEach(function(t) { t.classList.remove('active'); });
+  document.querySelectorAll('.sched-tab').forEach(function(t) { if (t.textContent.indexOf(type === 'minutes' ? '分' : type === 'hourly' ? '時間' : type === 'daily' ? '毎日' : type === 'weekly' ? '毎週' : 'Cron') !== -1) t.classList.add('active'); });
+  // Simpler: re-render via onclick attribute
+  var tabs = document.querySelectorAll('.sched-tab');
+  tabs.forEach(function(t) { t.classList.remove('active'); });
+  var typeMap = { minutes: 0, hourly: 1, daily: 2, weekly: 3, cron: 4 };
+  if (tabs[typeMap[type]]) tabs[typeMap[type]].classList.add('active');
+  renderWfdScheduleFields(type, {});
+}
+
+function renderWfdScheduleFields(type, rule) {
+  var el = document.getElementById('wfd-sched-fields');
+  if (type === 'minutes') {
+    var val = rule.minutesInterval || 5;
+    el.innerHTML = '<div class="form-group"><label class="form-label">間隔（分）</label>' +
+      '<input class="form-input" type="number" id="sched-val" min="1" max="1440" value="' + val + '"></div>';
+  } else if (type === 'hourly') {
+    var val = rule.hoursInterval || 1;
+    el.innerHTML = '<div class="form-group"><label class="form-label">間隔（時間）</label>' +
+      '<input class="form-input" type="number" id="sched-val" min="1" max="24" value="' + val + '"></div>';
+  } else if (type === 'daily') {
+    var val = rule.triggerAtHour !== undefined ? rule.triggerAtHour : 9;
+    var opts = '';
+    for (var h = 0; h < 24; h++) {
+      opts += '<option value="' + h + '"' + (h === val ? ' selected' : '') + '>' + h + ':00</option>';
+    }
+    el.innerHTML = '<div class="form-group"><label class="form-label">実行時刻</label>' +
+      '<select class="form-input" id="sched-hour">' + opts + '</select></div>';
+  } else if (type === 'weekly') {
+    var day = rule.triggerAtDay !== undefined ? rule.triggerAtDay : 1;
+    var hour = rule.triggerAtHour !== undefined ? rule.triggerAtHour : 9;
+    var days = ['日曜', '月曜', '火曜', '水曜', '木曜', '金曜', '土曜'];
+    var dayOpts = days.map(function(d, i) {
+      return '<option value="' + i + '"' + (i === day ? ' selected' : '') + '>' + d + '</option>';
+    }).join('');
+    var hourOpts = '';
+    for (var h = 0; h < 24; h++) {
+      hourOpts += '<option value="' + h + '"' + (h === hour ? ' selected' : '') + '>' + h + ':00</option>';
+    }
+    el.innerHTML =
+      '<div class="form-group"><label class="form-label">曜日</label>' +
+      '<select class="form-input" id="sched-day">' + dayOpts + '</select></div>' +
+      '<div class="form-group"><label class="form-label">実行時刻</label>' +
+      '<select class="form-input" id="sched-hour">' + hourOpts + '</select></div>';
+  } else if (type === 'cron') {
+    var val = rule.expression || '0 9 * * *';
+    el.innerHTML = '<div class="form-group"><label class="form-label">Cron式</label>' +
+      '<input class="form-input" type="text" id="sched-val" placeholder="0 9 * * *" value="' + escapeHtml(val) + '">' +
+      '<div style="font-size:10px;color:var(--text2);margin-top:4px">例: 0 9 * * * (毎日9時), */5 * * * * (5分毎)</div></div>';
+  }
+}
+
+function collectScheduleData() {
+  var type = currentScheduleType;
+  var data = { type: type };
+  if (type === 'minutes' || type === 'hourly') {
+    var el = document.getElementById('sched-val');
+    data.value = el ? Number(el.value) : 5;
+  } else if (type === 'daily') {
+    var el = document.getElementById('sched-hour');
+    data.hour = el ? Number(el.value) : 9;
+  } else if (type === 'weekly') {
+    var dayEl = document.getElementById('sched-day');
+    var hourEl = document.getElementById('sched-hour');
+    data.day = dayEl ? Number(dayEl.value) : 1;
+    data.hour = hourEl ? Number(hourEl.value) : 9;
+  } else if (type === 'cron') {
+    var el = document.getElementById('sched-val');
+    data.value = el ? el.value : '0 9 * * *';
+  }
+  return data;
+}
+
+async function saveWorkflowChanges() {
+  var btn = document.getElementById('wfd-save-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner" style="display:inline-block;width:14px;height:14px;border-width:1.5px;margin-right:6px;vertical-align:middle"></span>保存中...';
+  try {
+    // Collect parameters
+    var parameters = {};
+    document.querySelectorAll('#wfd-params-form [data-key]').forEach(function(el) {
+      parameters[el.dataset.key] = el.value;
+    });
+
+    // Collect schedule (only if schedule trigger exists)
+    var hasSchedule = !!document.querySelector('.sched-tabs');
+    var body = { workflow_id: currentWorkflowId, parameters: parameters };
+    if (hasSchedule) body.schedule = collectScheduleData();
+
+    await invokeFunction('workflows-update', { body: body });
+    // Update local data
+    if (currentWorkflowData) currentWorkflowData.parameters = parameters;
+    showToast('変更を保存しました', 'success');
+    loadWorkflows();
+  } catch (e) {
+    showToast('保存エラー: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '変更を保存';
+  }
+}
+
+async function toggleWorkflowActive() {
+  var wf = currentWorkflowData;
+  if (!wf) return;
+  var newStatus = wf.status === 'active' ? 'inactive' : 'active';
+  var btn = document.getElementById('wfd-toggle-btn');
+  btn.disabled = true;
+  try {
+    await invokeFunction('workflows-update', {
+      body: { workflow_id: wf.id, status: newStatus }
+    });
+    showToast(newStatus === 'active' ? 'フローを有効にしました' : 'フローを無効にしました', 'success');
+    wf.status = newStatus;
+    // Update UI
+    var badge = document.getElementById('wfd-status-badge');
+    if (newStatus === 'active') {
+      badge.className = 'sbadge ok';
+      badge.innerHTML = '<span class="sdot"></span>有効';
+      btn.textContent = '無効にする';
+      btn.className = 'btn-s';
+    } else {
+      badge.className = 'sbadge';
+      badge.innerHTML = '<span class="sdot"></span>無効';
+      btn.textContent = '有効にする';
+      btn.className = 'btn-p';
+    }
+    loadWorkflows();
+  } catch (e) {
+    showToast('エラー: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function confirmDeleteWorkflow() {
+  if (!currentWorkflowId) return;
+  if (!confirm('このフローを削除しますか？この操作は取り消せません。')) return;
+  deleteWorkflow();
+}
+
+async function deleteWorkflow() {
+  try {
+    await invokeFunction('workflows-delete', {
+      body: { workflow_id: currentWorkflowId }
+    });
+    showToast('フローを削除しました', 'success');
+    currentWorkflowId = null;
+    currentWorkflowData = null;
+    await loadWorkflows();
+    showPage('dashboard');
+  } catch (e) {
+    showToast('削除エラー: ' + e.message, 'error');
+  }
+}
+
+async function executeWorkflowNow() {
+  if (!currentWorkflowId) return;
+  var btn = document.getElementById('wfd-exec-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner" style="display:inline-block;width:14px;height:14px;border-width:1.5px;margin-right:6px;vertical-align:middle"></span>実行中...';
+  try {
+    await invokeFunction('workflows-execute', {
+      body: { workflow_id: currentWorkflowId }
+    });
+    showToast('ワークフローを実行しました。結果はメールで届きます。', 'success');
+  } catch (e) {
+    showToast('実行エラー: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '今すぐ実行';
+    btn.style.background = 'linear-gradient(135deg,#10b981,#059669)';
+  }
 }
 
 // ═══════════════════════════════════════════
@@ -2348,40 +2736,77 @@ async function wizardNext() {
 }
 
 // ═══════════════════════════════════════════
-// AI Chat (ask-box on Dashboard)
+// AI Flow Suggestion (ask-box on Dashboard)
 // ═══════════════════════════════════════════
-var askAnswerEl = null;
 async function sendAskQuestion() {
   if (!supabase) { showToast('Supabase未設定', 'error'); return; }
-  const textarea = document.querySelector('.ask-box');
-  const query = textarea.value.trim();
+  var textarea = document.querySelector('.ask-box');
+  var query = textarea.value.trim();
   if (!query) return;
-  const sendBtn = document.querySelector('.ask-send');
+  var sendBtn = document.querySelector('.ask-send');
   sendBtn.disabled = true;
-  // Show answer area below ask-wrap
-  if (!askAnswerEl) {
-    askAnswerEl = document.createElement('div');
-    askAnswerEl.id = 'ask-answer';
-    askAnswerEl.style.cssText = 'margin-top:16px;padding:16px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r-sm);font-size:13px;color:var(--text1);line-height:1.7;display:none;white-space:pre-wrap;';
-    document.querySelector('.ask-wrap').parentElement.insertBefore(askAnswerEl, document.querySelector('.sh'));
-  }
-  askAnswerEl.style.display = 'block';
-  askAnswerEl.textContent = '回答を生成中...';
+
+  var resultsEl = document.getElementById('flow-suggest-results');
+  resultsEl.style.display = 'block';
+  resultsEl.innerHTML = '<div class="flow-suggest-results"><div class="fs-loading"><div class="spinner" style="width:16px;height:16px;border-width:1.5px"></div>AIがテンプレートを検索中...</div></div>';
+
   try {
-    var ragData = await invokeFunction('rag-query', {
-      body: { query, generate_answer: true, top_k: 5 },
-    });
-    if (ragData && ragData.answer) {
-      askAnswerEl.innerHTML = '<div style="font-weight:600;margin-bottom:8px;color:var(--text0)">AI回答</div>' +
-        '<div>' + escapeHtml(ragData.answer) + '</div>' +
-        (ragData.sources && ragData.sources.length ? '<div style="margin-top:10px;font-size:11px;color:var(--text2)">参照: ' + ragData.sources.length + ' 件の参照元</div>' : '');
+    var data = await invokeFunction('flow-suggest', { body: { description: query } });
+
+    if (data && data.has_match && data.matches && data.matches.length > 0) {
+      var html = '<div class="flow-suggest-results"><div class="fs-header"><span class="fs-title">おすすめテンプレート</span>' +
+        '<button class="fs-close" onclick="closeFlowSuggest()">✕</button></div>';
+      if (data.suggestion) html += '<div class="fs-suggestion">' + escapeHtml(data.suggestion) + '</div>';
+      html += '<div class="flow-grid">';
+      data.matches.forEach(function(m) {
+        var t = allTemplates.find(function(x) { return x.id === m.template_id; });
+        if (t) {
+          var icons = (t.services || []).map(function(s) {
+            return '<div class="fg-icon"><img src="' + svcIcon(s) + '" alt="' + escapeHtml(s) + '"></div>';
+          }).join('');
+          var badge = t.category ? '<span class="fg-badge">' + escapeHtml(t.category) + '</span>' : '';
+          html += '<div class="fg-card" onclick="showTemplateDetail(\'' + t.id + '\')">' +
+            '<div class="fg-icons">' + icons + '<span class="fs-score">' + Math.round(m.score * 100) + '%</span></div>' +
+            '<div class="fg-title">' + escapeHtml(t.title) + '</div>' +
+            '<div class="fs-reason">' + escapeHtml(m.reason) + '</div>' +
+            badge + '</div>';
+        }
+      });
+      html += '</div></div>';
+      resultsEl.innerHTML = html;
     } else {
-      askAnswerEl.textContent = 'ナレッジベースに関連情報が見つかりませんでした。ドキュメントをアップロードしてください。';
+      var suggestion = (data && data.suggestion) ? escapeHtml(data.suggestion) : 'お探しの自動化はまだテンプレートにありません。';
+      resultsEl.innerHTML = '<div class="flow-suggest-results"><div class="fs-header"><span class="fs-title">検索結果</span>' +
+        '<button class="fs-close" onclick="closeFlowSuggest()">✕</button></div>' +
+        '<div class="fs-no-match"><p>' + suggestion + '</p>' +
+        '<button class="btn-p" onclick="saveFlowRequest()">リクエストとして保存</button></div></div>';
     }
   } catch (e) {
-    askAnswerEl.textContent = 'エラー: ' + e.message;
+    resultsEl.innerHTML = '<div class="flow-suggest-results"><div class="fs-header"><span class="fs-title">エラー</span>' +
+      '<button class="fs-close" onclick="closeFlowSuggest()">✕</button></div>' +
+      '<p style="font-size:13px;color:var(--text1)">' + escapeHtml(e.message) + '</p></div>';
   } finally {
     sendBtn.disabled = false;
+  }
+}
+
+function closeFlowSuggest() {
+  var el = document.getElementById('flow-suggest-results');
+  el.style.display = 'none';
+  el.innerHTML = '';
+}
+
+async function saveFlowRequest() {
+  var textarea = document.querySelector('.ask-box');
+  var description = textarea.value.trim();
+  if (!description) return;
+  try {
+    await invokeFunction('flow-suggest', { body: { description: description, save_request: true } });
+    showToast('リクエストを保存しました。テンプレートが追加され次第ご連絡します。', 'success');
+    closeFlowSuggest();
+    textarea.value = '';
+  } catch (e) {
+    showToast('保存エラー: ' + e.message, 'error');
   }
 }
 
@@ -2593,11 +3018,11 @@ function showPage(name) {
   document.querySelectorAll('.nav-link').forEach(b => b.classList.remove('active'));
   const el = document.getElementById('page-' + name);
   if (el) el.classList.add('visible');
-  const map = {dashboard:0,connections:1,knowledge:2,templates:3,history:4,'template-detail':3};
+  const map = {dashboard:0,connections:1,knowledge:2,templates:3,history:4,'template-detail':3,'workflow-detail':0};
   const nl = document.querySelectorAll('.nav-link');
   if (map[name] !== undefined && nl[map[name]]) nl[map[name]].classList.add('active');
   document.querySelectorAll('.fc').forEach(c => c.classList.remove('active'));
-  if (name === 'template-detail' || name === 'dashboard') {
+  if (name === 'template-detail' || name === 'dashboard' || name === 'workflow-detail') {
     const f = document.querySelector('#sidebar-flow .fc');
     if (f) f.classList.add('active');
   }
