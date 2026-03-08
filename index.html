@@ -1652,6 +1652,8 @@ var allWorkflows = [];
 var currentTemplateId = null;
 var wizardStep = 0;
 var wizardData = { templateId: null, services: [], parametersSchema: {}, parameters: {} };
+// Services provided by the platform (users don't need to connect these)
+var PLATFORM_SERVICES = ['anthropic'];
 
 if (SUPABASE_URL && SUPABASE_ANON_KEY) {
   supabase = _supabaseLib.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -2653,11 +2655,14 @@ function renderWizardStep() {
   const content = document.getElementById('wizard-content');
 
   if (wizardStep === 0) {
-    // Step 1: Connection check
+    // Step 1: Connection check (exclude platform-provided services)
     nextBtn.textContent = '次へ';
     const connNames = new Set(connectedCreds.filter(c => c.status === 'connected').map(c => c.service_name));
+    const userServices = wizardData.services.filter(s => !PLATFORM_SERVICES.includes(s));
     content.innerHTML = '<div class="sec-head" style="margin-bottom:14px">接続確認</div>' +
-      wizardData.services.map(s => {
+      (userServices.length === 0
+        ? '<div style="color:var(--text2);font-size:12px;padding:10px">接続が必要なサービスはありません</div>'
+        : userServices.map(s => {
         const isConn = connNames.has(s);
         const svc = ALL_SERVICES.find(x => x.name === s) || { label: s };
         return '<div style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r-sm);margin-bottom:8px">' +
@@ -2665,13 +2670,20 @@ function renderWizardStep() {
           '<span style="flex:1;font-size:13px">' + svc.label + '</span>' +
           (isConn ? '<span class="sbadge ok"><span class="sdot"></span>接続済み</span>' :
           '<button class="conn-btn" onclick="connectService(\'' + s + '\')">接続する</button>') + '</div>';
-      }).join('');
+      }).join(''));
   } else if (wizardStep === 1) {
-    // Step 2: Parameters form
+    // Step 2: Parameters form (skip hidden fields)
     nextBtn.textContent = '次へ';
     const schema = wizardData.parametersSchema;
     const props = schema.properties || schema;
-    const fields = Object.entries(props).map(([key, def]) => {
+    const visibleEntries = Object.entries(props).filter(([, def]) => !def.hidden);
+    // If all parameters are hidden, auto-advance to Step 3
+    if (visibleEntries.length === 0) {
+      wizardStep++;
+      renderWizardStep();
+      return;
+    }
+    const fields = visibleEntries.map(([key, def]) => {
       const label = def.label || def.title || key;
       const type = def.type || 'string';
       const ph = def.placeholder || def.description || '';
@@ -2686,20 +2698,37 @@ function renderWizardStep() {
     content.innerHTML = '<div class="sec-head" style="margin-bottom:14px">設定</div>' +
       (fields || '<div style="color:var(--text2);font-size:12px">設定項目はありません</div>');
   } else if (wizardStep === 2) {
-    // Step 3: Confirm
+    // Step 3: Confirm (only show user-visible parameters)
     nextBtn.textContent = 'フローを作成する';
-    const paramsList = Object.entries(wizardData.parameters).map(([k, v]) =>
-      '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px">' +
-      '<span style="color:var(--text2)">' + k + '</span><span>' + v + '</span></div>'
-    ).join('');
+    const schema = wizardData.parametersSchema;
+    const props = schema.properties || schema;
+    const visibleKeys = new Set(Object.entries(props).filter(([, def]) => !def.hidden).map(([k]) => k));
+    const paramsList = Object.entries(wizardData.parameters)
+      .filter(([k]) => visibleKeys.has(k))
+      .map(([k, v]) => {
+        const def = props[k] || {};
+        const label = def.label || def.title || k;
+        return '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px">' +
+          '<span style="color:var(--text2)">' + label + '</span><span>' + v + '</span></div>';
+      }).join('');
     content.innerHTML = '<div class="sec-head" style="margin-bottom:14px">確認</div>' +
       '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r-sm);padding:14px">' +
-      (paramsList || '<div style="color:var(--text2);font-size:12px">設定なし</div>') + '</div>';
+      (paramsList || '<div style="color:var(--text2);font-size:12px">自動設定されます</div>') + '</div>';
   }
 }
 
 function wizardPrev() {
-  if (wizardStep > 0) { wizardStep--; renderWizardStep(); }
+  if (wizardStep > 0) {
+    wizardStep--;
+    // If Step 2 has all hidden params, skip back to Step 1
+    if (wizardStep === 1) {
+      const schema = wizardData.parametersSchema;
+      const props = schema.properties || schema;
+      const hasVisible = Object.entries(props).some(([, def]) => !def.hidden);
+      if (!hasVisible) { wizardStep--; }
+    }
+    renderWizardStep();
+  }
 }
 
 async function wizardNext() {

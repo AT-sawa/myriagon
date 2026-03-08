@@ -2,6 +2,12 @@ import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { N8N_CRED_TYPE_MAP, NODE_TYPE_TO_SERVICE, getN8nConfig } from "../_shared/n8n.ts";
 import { PLAN_LIMITS } from "../_shared/common.ts";
+import { getValidAccessToken } from "../_shared/token-refresh.ts";
+
+// Services where the platform provides credentials (users don't need to connect)
+const PLATFORM_SERVICES = new Set(
+  (Deno.env.get("PLATFORM_SERVICES") || "anthropic").split(",").map(s => s.trim())
+);
 
 const ALLOWED_ORIGIN = Deno.env.get("FRONTEND_URL") || "https://myriagon.app";
 const corsHeaders = {
@@ -99,10 +105,10 @@ serve(async (req) => {
 
     const { template_id, parameters } = await req.json();
 
-    // 1. Get template workflow_json
+    // 1. Get template workflow_json + parameters_schema
     const { data: template, error: tplError } = await supabase
       .from("templates")
-      .select("workflow_json, title, services")
+      .select("workflow_json, title, services, parameters_schema")
       .eq("id", template_id)
       .single();
 
@@ -111,6 +117,58 @@ serve(async (req) => {
         status: 404,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    // 1.5 Auto-complete parameters based on schema "auto" field
+    const schema = template.parameters_schema?.properties || template.parameters_schema || {};
+    for (const [key, def] of Object.entries(schema) as [string, Record<string, unknown>][]) {
+      if (parameters[key] !== undefined && parameters[key] !== "") continue; // User-provided value takes priority
+      const autoType = def.auto as string | undefined;
+      if (!autoType) continue;
+
+      if (autoType === "user_email") {
+        parameters[key] = user.email || "";
+      } else if (autoType === "default") {
+        parameters[key] = def.default as string || "";
+      } else if (autoType === "create_spreadsheet") {
+        // Create a new Google Spreadsheet via API
+        const sheetTitle = `MYRIAGON - ${template.title}`;
+        // Determine header columns from schema metadata
+        const headers = (def.sheet_headers as string[]) || [];
+        try {
+          const { accessToken } = await getValidAccessToken(userData.tenant_id, "google_sheets");
+          const sheetsRes = await fetch("https://sheets.googleapis.com/v4/spreadsheets", {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${accessToken}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              properties: { title: sheetTitle },
+              sheets: [{
+                properties: { title: schema.sheet_name?.default as string || "Sheet1" },
+                data: headers.length > 0 ? [{
+                  startRow: 0, startColumn: 0,
+                  rowData: [{ values: headers.map(h => ({ userEnteredValue: { stringValue: h } })) }],
+                }] : undefined,
+              }],
+            }),
+          });
+          if (!sheetsRes.ok) {
+            const errBody = await sheetsRes.text();
+            throw new Error(`Google Sheets creation failed: ${errBody}`);
+          }
+          const sheetsData = await sheetsRes.json();
+          parameters[key] = sheetsData.spreadsheetId;
+        } catch (e) {
+          return new Response(JSON.stringify({
+            error: `スプレッドシートの自動作成に失敗しました: ${(e as Error).message}`,
+          }), {
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      }
     }
 
     // 2. Replace {{variables}} in workflow_json
@@ -138,11 +196,24 @@ serve(async (req) => {
     }
 
     // Check that all required services have n8n credentials
+    // For platform-provided services, fall back to platform credentials
     const requiredServices = new Set<string>();
     for (const node of (workflowJson.nodes || [])) {
       const svc = NODE_TYPE_TO_SERVICE[node.type as string];
       if (svc) requiredServices.add(svc);
     }
+
+    // Inject platform credentials for services the user hasn't connected
+    for (const svc of requiredServices) {
+      if (!credMap[svc] && PLATFORM_SERVICES.has(svc)) {
+        const envKey = `PLATFORM_N8N_CRED_${svc.toUpperCase()}`;
+        const platformCredId = Deno.env.get(envKey);
+        if (platformCredId) {
+          credMap[svc] = platformCredId;
+        }
+      }
+    }
+
     const missingCreds = [...requiredServices].filter(svc => !credMap[svc]);
     if (missingCreds.length > 0) {
       const svcNames = missingCreds.join(", ");
