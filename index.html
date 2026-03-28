@@ -1721,31 +1721,7 @@ async function invokeFunction(fnName, options) {
 // ═══════════════════════════════════════════
 // Auth
 // ═══════════════════════════════════════════
-function isInAppBrowser() {
-  var ua = navigator.userAgent || '';
-  return /Line\//i.test(ua) || /FBAN|FBAV/i.test(ua) || /Instagram/i.test(ua) || /Twitter/i.test(ua) || /MicroMessenger/i.test(ua);
-}
-
 async function signInWithGoogle() {
-  if (isInAppBrowser()) {
-    // アプリ内ブラウザではGoogle OAuthが使えないため外部ブラウザへ誘導
-    var isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
-    if (isIOS) {
-      // iOSではSafariで開く
-      window.location.href = 'x-safari-https://' + window.location.host + window.location.pathname;
-      setTimeout(function() {
-        // x-safari-https が効かない場合のフォールバック
-        showToast('右上の「…」メニューから「ブラウザで開く」を選んでください', 'error');
-      }, 2000);
-    } else {
-      // Androidでは intent:// で Chrome を起動
-      window.location.href = 'intent://' + window.location.host + window.location.pathname + '#Intent;scheme=https;package=com.android.chrome;end';
-      setTimeout(function() {
-        showToast('右上の「…」メニューから「ブラウザで開く」を選んでください', 'error');
-      }, 2000);
-    }
-    return;
-  }
   if (!supabase) { showToast('Supabase未設定', 'error'); return; }
   const { error } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.origin } });
   if (error) showToast(error.message, 'error');
